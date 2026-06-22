@@ -360,7 +360,7 @@ def convert_recording(filename: str, request: ConvertRequest, background_tasks: 
     elif target_format == "flac":
         ffmpeg_args = ["-c:a", "flac"]
     elif target_format == "aac":
-        br = request.bitrate or "256k"
+        br = request.bitrate or "320k"
         if not br.endswith("k"):
             br = f"{br}k"
         ffmpeg_args = ["-c:a", "aac", "-b:a", br]

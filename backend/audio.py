@@ -443,8 +443,8 @@ class AudioEngine:
         filename = self._generate_filename(out_dir)
         wav_path = out_dir / f"{filename}.wav"
         
-        # Determine subtype for WAV write based on bit depth
-        subtype = 'PCM_24' if self.config.bit_depth == 24 else 'PCM_16'
+        # WAV master is always saved as 24-bit PCM
+        subtype = 'PCM_24'
         
         try:
             sf.write(str(wav_path), trimmed_audio, sample_rate, subtype=subtype)

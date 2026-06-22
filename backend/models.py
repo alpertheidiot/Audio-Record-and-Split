@@ -4,7 +4,7 @@ from typing import Union, List, Optional
 class AppConfig(BaseModel):
     input_device: Union[str, int] = Field(default="BlackHole 2ch", description="Device name or PortAudio index")
     sample_rate: int = Field(default=48000, description="Sample rate (44100, 48000, 96000)")
-    bit_depth: int = Field(default=24, description="Bit depth for WAV master (16, 24)")
+    bit_depth: int = Field(default=24, description="Bit depth for WAV master (always 24)")
     channels: int = Field(default=2, description="Number of audio channels (1 or 2)")
     
     start_threshold_db: float = Field(default=-45.0, description="Start gate threshold in dBFS")
@@ -32,9 +32,8 @@ class AppConfig(BaseModel):
     @field_validator("bit_depth")
     @classmethod
     def validate_bit_depth(cls, v: int) -> int:
-        if v not in [16, 24]:
-            raise ValueError("Bit depth must be 16 or 24")
-        return v
+        # Always coerce to 24-bit to prevent validation errors with legacy configs
+        return 24
 
     @field_validator("channels")
     @classmethod

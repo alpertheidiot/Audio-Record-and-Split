@@ -118,10 +118,10 @@ class TranscodeQueue:
             ffmpeg_args = ["-c:a", "flac"]
         elif job.output_format == "aac":
             ext = ".m4a"
-            # Parse target bitrate for AAC
+            # Parse target bitrate for AAC, defaulting to 320k
             br = job.output_bitrate
             if not br.endswith("k"):
-                br = "256k"
+                br = "320k"
             ffmpeg_args = ["-c:a", "aac", "-b:a", br]
         else:
             logger.error(f"Unsupported output format: {job.output_format}")
