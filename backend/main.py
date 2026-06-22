@@ -7,12 +7,12 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Set
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import ValidationError
 
 from backend.config import load_config, save_config, update_config
-from backend.models import AppConfig, DeviceInfo, RecordingInfo
+from backend.models import AppConfig, DeviceInfo, RecordingInfo, ConvertRequest
 from backend.audio import audio_engine, status_queue
 from backend.transcode import transcoder
 
@@ -175,27 +175,43 @@ def start_calibrate(duration_sec: float = 3.0):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def _get_audio_duration_ffprobe(filepath: Path) -> int:
-    """Use ffprobe to retrieve duration of audio files in milliseconds."""
+def _get_audio_info_ffprobe(filepath: Path) -> Dict[str, int]:
+    """Use ffprobe to retrieve duration in ms and bitrate in kbps."""
     ffprobe_path = shutil.which("ffprobe")
+    info = {"duration_ms": 0, "bitrate_kbps": 0}
     if not ffprobe_path:
-        return 0
+        return info
         
     cmd = [
         ffprobe_path, 
         "-v", "error", 
-        "-show_entries", "format=duration", 
-        "-of", "default=noprint_wrappers=1:nokey=1", 
+        "-show_entries", "format=duration,bit_rate", 
+        "-of", "default=noprint_wrappers=1", 
         str(filepath)
     ]
     try:
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=2.0)
         if res.returncode == 0:
-            duration_sec = float(res.stdout.strip())
-            return int(duration_sec * 1000)
+            for line in res.stdout.strip().split("\n"):
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    val = val.strip()
+                    if key == "duration" and val != "N/A" and val:
+                        info["duration_ms"] = int(float(val) * 1000)
+                    elif key == "bit_rate" and val != "N/A" and val:
+                        info["bitrate_kbps"] = int(int(val) / 1000)
     except Exception as e:
-        logger.warning(f"Failed to read duration for {filepath.name} using ffprobe: {e}")
-    return 0
+        logger.warning(f"Failed to read audio info for {filepath.name} using ffprobe: {e}")
+        
+    if info["duration_ms"] > 0 and info["bitrate_kbps"] == 0:
+        try:
+            size_bytes = filepath.stat().st_size
+            duration_sec = info["duration_ms"] / 1000.0
+            info["bitrate_kbps"] = int((size_bytes * 8) / duration_sec / 1000.0)
+        except Exception:
+            pass
+            
+    return info
 
 @app.get("/api/recordings", response_model=List[RecordingInfo])
 def list_recordings():
@@ -214,46 +230,27 @@ def list_recordings():
     # We want to scan files that match our output extension formats
     extensions = [".wav", ".mp3", ".flac", ".m4a"]
     
-    # Group files by stem so we don't return duplicates of the same track in multiple formats
-    # (e.g. track.wav and track.mp3). We prioritize the transcoded copy if available, or WAV if that's the only one.
-    stems: Dict[str, List[Path]] = {}
     for entry in out_dir.iterdir():
         if entry.is_file() and entry.suffix.lower() in extensions:
             stem = entry.stem
-            if stem not in stems:
-                stems[stem] = []
-            stems[stem].append(entry)
+            ext = entry.suffix.lower().replace(".", "")
+            size_bytes = entry.stat().st_size
+            mtime = entry.stat().st_mtime
+            created_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
             
-    for stem, paths in stems.items():
-        # Find the primary file. We prefer the transcode output format if it exists, or WAV otherwise.
-        primary_path = paths[0]
-        for path in paths:
-            if path.suffix.lower().replace(".", "") == config.output_format:
-                primary_path = path
-                break
-                
-        ext = primary_path.suffix.lower().replace(".", "")
-        size_bytes = primary_path.stat().st_size
-        mtime = primary_path.stat().st_mtime
-        created_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Read duration
-        duration_ms = _get_audio_duration_ffprobe(primary_path)
-        
-        # Get transcoding status
-        status = transcoder.get_status(stem)
-        if status == 'unknown':
-            status = 'done' # If file exists on disk and is not in queue, it is done
+            # Read duration and bitrate
+            info = _get_audio_info_ffprobe(entry)
             
-        recordings.append({
-            "name": stem,
-            "path": str(primary_path),
-            "duration_ms": duration_ms,
-            "size_bytes": size_bytes,
-            "created_at": created_str,
-            "format": ext,
-            "peak_db": 0.0 # Placeholder for simplicity
-        })
+            recordings.append({
+                "name": stem,
+                "path": str(entry),
+                "duration_ms": info["duration_ms"],
+                "size_bytes": size_bytes,
+                "created_at": created_str,
+                "format": ext,
+                "peak_db": 0.0,
+                "bitrate_kbps": info["bitrate_kbps"]
+            })
         
     # Sort by created time descending
     recordings.sort(key=lambda x: x["created_at"], reverse=True)
@@ -275,28 +272,110 @@ def download_recording(filename: str):
 
 @app.delete("/api/recordings/{filename}")
 def delete_recording(filename: str):
-    """Delete a recording stem (deletes all extensions for this file, e.g. wav + mp3)."""
+    """Delete a specific recording file."""
     config = load_config()
     out_dir = Path(config.output_dir)
     if not out_dir.is_absolute():
         out_dir = Path(os.getcwd()) / out_dir
         
-    stem = Path(filename).stem
-    deleted_any = False
-    
-    for ext in [".wav", ".mp3", ".flac", ".m4a"]:
-        path = out_dir / f"{stem}{ext}"
-        if path.exists() and path.is_file():
-            try:
-                path.unlink()
-                deleted_any = True
-            except Exception as e:
-                logger.error(f"Failed to delete {path}: {e}")
-                
-    if not deleted_any:
-        raise HTTPException(status_code=404, detail="No files found to delete for this recording.")
+    filepath = out_dir / filename
+    if filepath.exists() and filepath.is_file():
+        try:
+            filepath.unlink()
+            return {"status": "success", "message": f"Deleted file '{filename}'"}
+        except Exception as e:
+            logger.error(f"Failed to delete {filepath}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete file: {e}")
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
+
+def _run_ffmpeg_convert(cmd: List[str], target_filename: str):
+    try:
+        logger.info(f"Background convert running ffmpeg: {' '.join(cmd)}")
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        logger.info(f"Background convert succeeded for {target_filename}")
+        status_queue.put({
+            "state": audio_engine.state,
+            "level_db": -90.0,
+            "peak_db": -90.0,
+            "elapsed_ms": 0,
+            "silence_ms": 0,
+            "conversion_completed": True,
+            "filename": target_filename
+        })
+    except Exception as e:
+        logger.error(f"Background convert failed for {target_filename}: {e}")
+        status_queue.put({
+            "state": audio_engine.state,
+            "level_db": -90.0,
+            "peak_db": -90.0,
+            "elapsed_ms": 0,
+            "silence_ms": 0,
+            "conversion_failed": True,
+            "filename": target_filename
+        })
+
+@app.post("/api/recordings/{filename}/convert")
+def convert_recording(filename: str, request: ConvertRequest, background_tasks: BackgroundTasks):
+    """Transcode a specific recording to another format in the background."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
         
-    return {"status": "success", "message": f"Deleted all files for recording '{stem}'"}
+    src_path = out_dir / filename
+    if not src_path.exists() or not src_path.is_file():
+        raise HTTPException(status_code=404, detail="Source audio file not found")
+        
+    target_format = request.target_format.lower().strip()
+    if target_format not in ["mp3", "flac", "aac", "wav"]:
+        raise HTTPException(status_code=400, detail="Invalid target format")
+        
+    ext = {
+        "mp3": ".mp3",
+        "flac": ".flac",
+        "aac": ".m4a",
+        "wav": ".wav"
+    }[target_format]
+    
+    if src_path.suffix.lower() == ext or (src_path.suffix.lower() == ".m4a" and target_format == "aac"):
+        raise HTTPException(status_code=400, detail="Source file is already in the target format")
+        
+    stem = src_path.stem
+    candidate = f"{stem}{ext}"
+    counter = 1
+    while (out_dir / candidate).exists():
+        candidate = f"{stem}-{counter}{ext}"
+        counter += 1
+        
+    dest_path = out_dir / candidate
+    
+    ffmpeg_path = shutil.which("ffmpeg")
+    if not ffmpeg_path:
+        raise HTTPException(status_code=500, detail="FFmpeg not found on the system path")
+        
+    ffmpeg_args = []
+    if target_format == "mp3":
+        ffmpeg_args = ["-codec:a", "libmp3lame", "-b:a", request.bitrate or "320k"]
+    elif target_format == "flac":
+        ffmpeg_args = ["-c:a", "flac"]
+    elif target_format == "aac":
+        br = request.bitrate or "256k"
+        if not br.endswith("k"):
+            br = f"{br}k"
+        ffmpeg_args = ["-c:a", "aac", "-b:a", br]
+    elif target_format == "wav":
+        ffmpeg_args = ["-c:a", "pcm_s16le"]
+        
+    cmd = [ffmpeg_path, "-y", "-i", str(src_path)] + ffmpeg_args + [str(dest_path)]
+    
+    background_tasks.add_task(_run_ffmpeg_convert, cmd, candidate)
+    
+    return {
+        "status": "success", 
+        "message": f"Conversion to {target_format.upper()} started in background.", 
+        "target_file": candidate
+    }
 
 # ----------------- WEBSOCKETS -----------------
 

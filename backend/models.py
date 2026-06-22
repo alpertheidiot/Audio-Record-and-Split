@@ -81,3 +81,8 @@ class RecordingInfo(BaseModel):
     created_at: str
     format: str
     peak_db: float
+    bitrate_kbps: int
+
+class ConvertRequest(BaseModel):
+    target_format: str
+    bitrate: Optional[str] = "320k"
