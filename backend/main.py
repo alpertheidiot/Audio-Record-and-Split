@@ -377,6 +377,22 @@ def convert_recording(filename: str, request: ConvertRequest, background_tasks: 
         "target_file": candidate
     }
 
+
+
+@app.post("/api/system/stop")
+def stop_services():
+    """Stop all services by killing the process on port 8000."""
+    logger.info("System stop requested.")
+    def kill_task():
+        import time
+        import subprocess
+        time.sleep(0.5)  # Give FastAPI time to send the response
+        subprocess.run("kill -9 $(lsof -t -i :8000)", shell=True)
+        
+    import threading
+    threading.Thread(target=kill_task, daemon=True).start()
+    return {"status": "success", "message": "Stopping all services..."}
+
 # ----------------- WEBSOCKETS -----------------
 
 @app.websocket("/ws")
