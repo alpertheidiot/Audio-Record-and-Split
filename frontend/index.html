@@ -1762,20 +1762,14 @@
       try {
         const response = await fetch("/api/system/stop", { method: "POST" });
         if (response.ok) {
-          showToast("Server shutdown command executed. Closing tab...", "error");
-          setTimeout(() => {
-            window.close();
-          }, 1000);
+          showToast("Server shutdown command executed. Connection lost.", "error");
         } else {
           showToast("Failed to request stop.", "error");
         }
       } catch (err) {
         console.error(err);
         // It's normal for connection to drop immediately when port is killed
-        showToast("Services stopped successfully. Closing tab...", "success");
-        setTimeout(() => {
-          window.close();
-        }, 1000);
+        showToast("Services stopped successfully.", "success");
       }
     }
 

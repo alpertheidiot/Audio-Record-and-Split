@@ -387,7 +387,8 @@ def stop_services():
         import time
         import subprocess
         time.sleep(0.5)  # Give FastAPI time to send the response
-        subprocess.run("kill -9 $(lsof -t -i :8000)", shell=True)
+        # Use -s TCP:LISTEN to avoid killing client processes (like the browser) connected to port 8000
+        subprocess.run("kill -9 $(lsof -t -i :8000 -s TCP:LISTEN)", shell=True)
         
     import threading
     threading.Thread(target=kill_task, daemon=True).start()
