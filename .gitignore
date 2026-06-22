@@ -1,0 +1,20 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS Files
+.DS_Store
+Thumbs.db
+**/__pycache__/
+**/.DS_Store
+
+# Audio Recordings
+recordings/*
+!recordings/.gitkeep

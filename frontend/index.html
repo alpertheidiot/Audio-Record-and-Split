@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SilenceCut — Audio Capture Hub</title>
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121e;
+      --bg-glass: rgba(18, 18, 30, 0.7);
+      --bg-glass-hover: rgba(25, 25, 42, 0.85);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-glass-focus: rgba(139, 92, 246, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #8892b0;
+      
+      --accent-purple: #8b5cf6;
+      --accent-purple-glow: rgba(139, 92, 246, 0.4);
+      --accent-teal: #14b8a6;
+      --accent-teal-glow: rgba(20, 184, 166, 0.3);
+      --accent-coral: #f43f5e;
+      --accent-coral-glow: rgba(244, 63, 94, 0.4);
+      --accent-amber: #f59e0b;
+      --accent-amber-glow: rgba(245, 158, 11, 0.3);
+      
+      --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+      padding: 2.5rem 1.5rem;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    @media (min-width: 900px) {
+      .container {
+        grid-template-columns: 7fr 5fr;
+      }
+      .header-area {
+        grid-column: span 2;
+      }
+    }
+
+    /* Glassmorphism Panel */
+    .panel {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 1.25rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+      transition: border-color var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .panel:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Header styling */
+    .header-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-teal));
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+
+    .logo-text h1 {
+      font-size: 1.75rem;
+      background: linear-gradient(to right, #ffffff, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Status Pill */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid var(--border-glass);
+      background: rgba(255, 255, 255, 0.03);
+      transition: all var(--transition-normal);
+    }
+
+    .status-dot {
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    /* Status classes */
+    .status-stopped {
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+    .status-stopped .status-dot {
+      background: var(--text-muted);
+    }
+
+    .status-listening {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+    }
+    .status-listening .status-dot {
+      background: var(--accent-purple);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-recording {
+      border-color: var(--accent-coral);
+      color: var(--accent-coral);
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.2);
+    }
+    .status-recording .status-dot {
+      background: var(--accent-coral);
+      animation: pulse 1s infinite;
+    }
+
+    .status-calibrating {
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+    }
+    .status-calibrating .status-dot {
+      background: var(--accent-amber);
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 8px cubic-bezier(0.4, 0, 0.2, 1); }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    /* Main Grid Panels */
+    .main-controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel-title {
+      font-size: 1.25rem;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 0.75rem;
+    }
+
+    /* Control Buttons */
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .btn {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.85rem 1.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all var(--transition-fast);
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-glass);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    .btn-coral {
+      background: linear-gradient(135deg, var(--accent-coral), #e11d48);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-coral:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(244, 63, 94, 0.45);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Live DB Meter */
+    .meter-container {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .meter-label-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-bottom: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .meter-bar-outer {
+      height: 1.5rem;
+      background: #09090e;
+      border-radius: 0.4rem;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .meter-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, var(--accent-teal), var(--accent-purple), var(--accent-coral));
+      transition: width 0.06s linear;
+      border-radius: 0.4rem;
+    }
+
+    /* Threshold overlays on the meter */
+    .meter-threshold-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    
+    .meter-threshold-line::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .line-start {
+      background: var(--accent-purple);
+      box-shadow: 0 0 8px var(--accent-purple);
+    }
+    .line-start::after {
+      background: var(--accent-purple);
+    }
+
+    .line-stop {
+      background: var(--accent-teal);
+      box-shadow: 0 0 8px var(--accent-teal);
+    }
+    .line-stop::after {
+      background: var(--accent-teal);
+    }
+
+    /* Rolling DB Canvas Graph */
+    .canvas-container {
+      position: relative;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.75rem;
+      overflow: hidden;
+      height: 200px;
+      width: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Timing / HUD overlay */
+    .hud-overlay {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      text-align: center;
+    }
+
+    .hud-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+    }
+
+    .hud-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .hud-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Configuration Panel (Right Column) */
+    .config-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .form-group label span {
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .form-control {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.5rem;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.65rem 0.75rem;
+      outline: none;
+      transition: all var(--transition-fast);
+      width: 100%;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-purple);
+      background: rgba(255,255,255,0.07);
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+    }
+
+    /* Split Slider Controls for Thresholds */
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .slider-input {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      outline: none;
+    }
+
+    .slider-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-purple);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .slider-input::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .slider-input-stop::-webkit-slider-thumb {
+      background: var(--accent-teal);
+    }
+
+    /* Toggle Switches */
+    .switch-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 2.75rem;
+      height: 1.5rem;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255,255,255,0.1);
+      transition: .3s;
+      border-radius: 1.5rem;
+      border: 1px solid var(--border-glass);
+    }
+
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 1rem;
+      width: 1rem;
+      left: 0.15rem;
+      bottom: 0.1rem;
+      background-color: #fff;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .switch-slider {
+      background-color: var(--accent-purple);
+    }
+
+    input:checked + .switch-slider:before {
+      transform: translateX(1.25rem);
+    }
+
+    /* Recordings Area */
+    .recordings-section {
+      grid-column: span 2;
+    }
+
+    .recordings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .recordings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .recording-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-glass);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      transition: all var(--transition-normal);
+    }
+
+    .recording-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      transform: scale(1.005);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .rec-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .rec-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .rec-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .rec-badge {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-wav  { background: rgba(255,255,255,0.1); color: #fff; }
+    .badge-mp3  { background: var(--accent-purple-glow); color: #c084fc; border: 1px solid rgba(167, 139, 250, 0.3); }
+    .badge-flac { background: var(--accent-teal-glow); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.3); }
+    .badge-m4a  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    .rec-info-row {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .rec-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Player controls nested in recording cards */
+    .rec-player {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--border-glass);
+    }
+    
+    .rec-player audio {
+      height: 24px;
+      width: 180px;
+    }
+
+    .icon-btn {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-glass);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .icon-btn-delete:hover {
+      background: var(--accent-coral-glow);
+      color: var(--accent-coral);
+      border-color: var(--accent-coral);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      border: 2px dashed rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+    }
+
+    .status-text-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Toast system */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: rgba(18, 18, 30, 0.95);
+      border: 1px solid var(--border-glass);
+      border-left: 4px solid var(--accent-purple);
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      color: #fff;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-size: 0.9rem;
+      backdrop-filter: blur(10px);
+      min-width: 250px;
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .toast-error {
+      border-left-color: var(--accent-coral);
+    }
+
+    .toast-success {
+      border-left-color: var(--accent-teal);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .fade-out {
+      animation: fadeOut 0.3s forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- HEADER -->
+    <header class="header-area">
+      <div class="logo-container">
+        <div class="logo-icon">SC</div>
+        <div class="logo-text">
+          <h1>SilenceCut</h1>
+          <p>macOS System Audio Gate Recorder</p>
+        </div>
+      </div>
+      <div id="statusBadge" class="status-badge status-stopped">
+        <div class="status-dot"></div>
+        <span id="statusText">STOPPED</span>
+      </div>
+    </header>
+
+    <!-- LEFT COLUMN: ENGINE STATUS & METERING -->
+    <main class="main-controls-panel">
+      
+      <!-- Control Panel -->
+      <section class="panel">
+        <h2 class="panel-title">Capture Engine</h2>
+        <div class="button-group" style="margin-bottom: 1.5rem;">
+          <button id="btnListen" class="btn btn-primary" onclick="toggleListening()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            <span>Start Listening</span>
+          </button>
+          <button id="btnCalibrate" class="btn btn-secondary" onclick="runCalibration()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+            <span>Calibrate Noise</span>
+          </button>
+        </div>
+        
+        <!-- Live HUD metrics -->
+        <div class="hud-overlay">
+          <div class="hud-card">
+            <div class="hud-title">Record Time</div>
+            <div id="hudTime" class="hud-value">00:00.0</div>
+          </div>
+          <div class="hud-card">
+            <div class="hud-title">Signal Level</div>
+            <div id="hudLevel" class="hud-value">-90 dB</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Metering visualizers -->
+      <section class="panel" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
+        <h2 class="panel-title">Signal Monitor</h2>
+        
+        <!-- Horizontal level meter -->
+        <div class="meter-container">
+          <div class="meter-label-row">
+            <span>-90 dB</span>
+            <span>-60</span>
+            <span>-45</span>
+            <span>-30</span>
+            <span>-15</span>
+            <span>0 dB</span>
+          </div>
+          <div class="meter-bar-outer">
+            <div id="meterBar" class="meter-bar-fill"></div>
+            <!-- Threshold Markers -->
+            <div id="markerStart" class="meter-threshold-line line-start"></div>
+            <div id="markerStop" class="meter-threshold-line line-stop"></div>
+          </div>
+        </div>
+        
+        <!-- Rolling canvas history -->
+        <div class="canvas-container">
+          <canvas id="rollingChart"></canvas>
+        </div>
+      </section>
+      
+    </main>
+
+    <!-- RIGHT COLUMN: CONFIGURATION -->
+    <aside class="panel">
+      <h2 class="panel-title">System Settings</h2>
+      <form id="configForm" class="config-form" onsubmit="saveConfigForm(event)">
+        
+        <!-- Devices selection -->
+        <div class="form-group">
+          <label for="input_device">Audio Input Device</label>
+          <select id="input_device" class="form-control"></select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="sample_rate">Sample Rate</label>
+            <select id="sample_rate" class="form-control">
+              <option value="44100">44,100 Hz</option>
+              <option value="48000">48,000 Hz</option>
+              <option value="96000">96,000 Hz</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="channels">Channels</label>
+            <select id="channels" class="form-control">
+              <option value="1">Mono (1 ch)</option>
+              <option value="2">Stereo (2 ch)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <div class="form-group">
+            <label for="output_format">Output Format</label>
+            <select id="output_format" class="form-control" onchange="toggleBitrateField()">
+              <option value="mp3">MP3 Lossy</option>
+              <option value="flac">FLAC Lossless</option>
+              <option value="aac">AAC (M4A)</option>
+              <option value="wav">WAV Master Only</option>
+            </select>
+          </div>
+          <div id="bitrateGroup" class="form-group">
+            <label for="output_bitrate">Bitrate</label>
+            <select id="output_bitrate" class="form-control">
+              <option value="128k">128 kbps</option>
+              <option value="192k">192 kbps</option>
+              <option value="256k">256 kbps</option>
+              <option value="320k">320 kbps</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Options</label>
+          <div class="switch-container">
+            <span style="font-size: 0.9rem; color: var(--text-muted);">Keep Lossless WAV Master</span>
+            <label class="switch">
+              <input type="checkbox" id="keep_wav_master">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- DSP Gating Settings -->
+        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div class="form-group">
+            <label for="start_threshold_db">Start Threshold <span id="lblStartThreshold">-45.0 dB</span></label>
+            <div class="slider-container">
+              <input type="range" id="start_threshold_db" class="slider-input" min="-80" max="-10" step="0.5" oninput="updateSliders()">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="stop_threshold_db">Stop Threshold <span id="lblStopThreshold">-50.0 dB</span></label>
+            <div class="slider-container">
+              <input type="range" id="stop_threshold_db" class="slider-input slider-input-stop" min="-85" max="-15" step="0.5" oninput="updateSliders()">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="silence_stop_ms">Stop Silence (ms)</label>
+              <input type="number" id="silence_stop_ms" class="form-control" min="500" max="10000" step="100">
+            </div>
+            <div class="form-group">
+              <label for="start_debounce_ms">Debounce (ms)</label>
+              <input type="number" id="start_debounce_ms" class="form-control" min="50" max="1000" step="50">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="preroll_ms">Pre-Roll (ms)</label>
+              <input type="number" id="preroll_ms" class="form-control" min="0" max="2000" step="100">
+            </div>
+            <div class="form-group">
+              <label for="tail_keep_ms">Tail Retain (ms)</label>
+              <input type="number" id="tail_keep_ms" class="form-control" min="0" max="1000" step="50">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="min_recording_ms">Min Duration (ms)</label>
+              <input type="number" id="min_recording_ms" class="form-control" min="500" max="10000" step="100">
+            </div>
+            <div class="form-group">
+              <label for="max_recording_ms">Max Duration (ms)</label>
+              <input type="number" id="max_recording_ms" class="form-control" min="10000" max="3600000" step="10000">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <label for="output_dir">Output Directory</label>
+          <input type="text" id="output_dir" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="filename_pattern">Naming Pattern</label>
+          <input type="text" id="filename_pattern" class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Configuration</button>
+      </form>
+    </aside>
+
+    <!-- BOTTOM ROW: RECORDINGS -->
+    <section class="panel recordings-section">
+      <div class="recordings-header">
+        <h2 style="font-size: 1.5rem; color: #fff;">Captured Tracks</h2>
+        <button class="btn btn-secondary" onclick="fetchRecordings()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      <div id="recordingsList" class="recordings-list">
+        <!-- Recordings populated here -->
+        <div class="empty-state">No clips captured yet. Start listening and play audio.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- WebSocket + Chart + UI Script -->
+  <script>
+    // State management
+    let currentEngineState = "stopped";
+    let startThreshold = -45.0;
+    let stopThreshold = -50.0;
+    
+    // Canvas rolling DB history config
+    const canvas = document.getElementById("rollingChart");
+    const ctx = canvas.getContext("2d");
+    let dbHistory = [];
+    const maxHistoryPoints = 600; // ~12 seconds of history
+
+    // Resize canvas on start
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      // Account for device pixel ratio for sharp lines
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener("resize", resizeCanvas);
+    
+    // Initialize DB history buffer
+    for(let i=0; i<maxHistoryPoints; i++) {
+      dbHistory.push(-90);
+    }
+
+    // Connect WebSocket
+    let ws;
+    function connectWS() {
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateStatusHUD(data);
+      };
+
+      ws.onclose = () => {
+        console.warn("WebSocket disconnected. Retrying in 3 seconds...");
+        showToast("Signal monitor disconnected. Reconnecting...", "error");
+        setTimeout(connectWS, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error("WS error: ", err);
+      };
+    }
+
+    // Update level display and state
+    function updateStatusHUD(data) {
+      const state = data.state;
+      const level = data.level_db;
+      const peak = data.peak_db;
+      const elapsed = data.elapsed_ms;
+      const silence = data.silence_ms;
+      
+      // If calibration result returned
+      if (data.calibration_result) {
+        const res = data.calibration_result;
+        showToast(`Calibration Complete! Noise Floor: ${res.max_noise_db.toFixed(1)} dB. Sensible thresholds applied.`, "success");
+        fetchConfig();
+      }
+
+      // Update State Badge
+      if(state !== currentEngineState) {
+        currentEngineState = state;
+        const badge = document.getElementById("statusBadge");
+        const txt = document.getElementById("statusText");
+        badge.className = `status-badge status-${state}`;
+        txt.textContent = state.toUpperCase();
+        
+        // Refresh recordings if state changed from recording -> listening (finalized clip)
+        if (state === "listening") {
+          fetchRecordings();
+        }
+
+        // Adjust primary button label
+        const btnListen = document.getElementById("btnListen");
+        if(state === "listening" || state === "recording") {
+          btnListen.className = "btn btn-coral";
+          btnListen.querySelector("span").textContent = "Stop Listening";
+        } else {
+          btnListen.className = "btn btn-primary";
+          btnListen.querySelector("span").textContent = "Start Listening";
+        }
+      }
+
+      // Update text displays
+      document.getElementById("hudLevel").textContent = `${Math.round(level)} dB`;
+      
+      // Update Timer
+      if(state === "recording") {
+        document.getElementById("hudTime").textContent = formatTime(elapsed);
+        document.getElementById("hudTime").style.color = "var(--accent-coral)";
+      } else if (state === "listening") {
+        document.getElementById("hudTime").textContent = "Listening";
+        document.getElementById("hudTime").style.color = "var(--accent-purple)";
+      } else if (state === "calibrating") {
+        const pct = data.progress ? Math.round(data.progress) : 0;
+        document.getElementById("hudTime").textContent = `Calibrating ${pct}%`;
+        document.getElementById("hudTime").style.color = "var(--accent-amber)";
+      } else {
+        document.getElementById("hudTime").textContent = "00:00.0";
+        document.getElementById("hudTime").style.color = "var(--text-muted)";
+      }
+
+      // Level Meter Bar
+      // -90dB to 0dB -> translate to 0% to 100%
+      const percentage = Math.min(100, Math.max(0, ((level + 90) / 90) * 100));
+      document.getElementById("meterBar").style.width = `${percentage}%`;
+
+      // Update meter threshold markers
+      const startPct = ((startThreshold + 90) / 90) * 100;
+      const stopPct = ((stopThreshold + 90) / 90) * 100;
+      document.getElementById("markerStart").style.left = `${startPct}%`;
+      document.getElementById("markerStop").style.left = `${stopPct}%`;
+
+      // Push history for rolling chart
+      dbHistory.push(level);
+      if(dbHistory.length > maxHistoryPoints) {
+        dbHistory.shift();
+      }
+      
+      drawChart();
+    }
+
+    // Canvas drawing function
+    function drawChart() {
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      // Grid lines
+      ctx.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx.lineWidth = 1;
+      for (let db = -10; db >= -80; db -= 10) {
+        const y = Math.min(h, Math.max(0, ((db + 90) / 90) * h));
+        const inverseY = h - y; // DB: 0 is top, -90 is bottom
+        ctx.beginPath();
+        ctx.moveTo(0, inverseY);
+        ctx.lineTo(w, inverseY);
+        ctx.stroke();
+      }
+
+      // Draw Level Fill Area
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      
+      for (let i = 0; i < dbHistory.length; i++) {
+        const x = (i / (maxHistoryPoints - 1)) * w;
+        // DB value to Y pixel mapping
+        const val = dbHistory[i];
+        const pct = (val + 90) / 90; // 0 (silence) to 1 (full scale)
+        const y = h - (pct * h);
+        ctx.lineTo(x, y);
+      }
+      
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      
+      // Audio gradient fill
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "rgba(244, 63, 94, 0.25)");  // coral peak
+      grad.addColorStop(0.5, "rgba(139, 92, 246, 0.15)"); // purple mid
+      grad.addColorStop(1, "rgba(20, 184, 166, 0.05)");   // teal floor
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Draw Line Envelope
+      ctx.beginPath();
+      for (let i = 0; i < dbHistory.length; i++) {
+        const x = (i / (maxHistoryPoints - 1)) * w;
+        const val = dbHistory[i];
+        const pct = (val + 90) / 90;
+        const y = h - (pct * h);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "rgba(139, 92, 246, 0.6)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Draw Start Threshold Line (Coral/Pink)
+      const startY = h - (((startThreshold + 90) / 90) * h);
+      ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, startY);
+      ctx.lineTo(w, startY);
+      ctx.stroke();
+      
+      // Label
+      ctx.fillStyle = "rgba(244, 63, 94, 0.9)";
+      ctx.font = "10px JetBrains Mono";
+      ctx.setLineDash([]);
+      ctx.fillText(`START: ${startThreshold.toFixed(1)} dB`, 10, startY - 4);
+
+      // Draw Stop Threshold Line (Teal)
+      const stopY = h - (((stopThreshold + 90) / 90) * h);
+      ctx.strokeStyle = "rgba(20, 184, 166, 0.75)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, stopY);
+      ctx.lineTo(w, stopY);
+      ctx.stroke();
+      
+      // Label
+      ctx.fillStyle = "rgba(20, 184, 166, 0.9)";
+      ctx.font = "10px JetBrains Mono";
+      ctx.setLineDash([]);
+      ctx.fillText(`STOP: ${stopThreshold.toFixed(1)} dB`, 10, stopY - 4);
+    }
+
+    // Helper formatter
+    function formatTime(ms) {
+      const totalSec = ms / 1000;
+      const minutes = Math.floor(totalSec / 60);
+      const seconds = Math.floor(totalSec % 60);
+      const tenths = Math.floor((ms % 1000) / 100);
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${tenths}`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Toggle Listening
+    async function toggleListening() {
+      const isListening = (currentEngineState === "listening" || currentEngineState === "recording");
+      const url = isListening ? "/api/listen/stop" : "/api/listen/start";
+      
+      try {
+        const response = await fetch(url, { method: "POST" });
+        const res = await response.json();
+        if (res.status === "success") {
+          showToast(isListening ? "Listening stopped." : "Engine listening for system audio signals...", "success");
+        } else {
+          showToast(res.detail || "Failed to toggle state.", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Network error trying to connect to engine.", "error");
+      }
+    }
+
+    // Run ambient noise floor calibration
+    async function runCalibration() {
+      try {
+        const response = await fetch("/api/listen/calibrate?duration_sec=3.0", { method: "POST" });
+        const res = await response.json();
+        if (res.status === "success") {
+          showToast("Calibrating ambient noise floor. Keep audio silent...", "success");
+        } else {
+          showToast(res.detail || "Calibration failed.", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error triggering calibration.", "error");
+      }
+    }
+
+    // API fetches
+    async function fetchDevices() {
+      const select = document.getElementById("input_device");
+      try {
+        const res = await fetch("/api/devices");
+        const devices = await res.json();
+        
+        select.innerHTML = "";
+        devices.forEach(dev => {
+          if (dev.max_input_channels > 0) {
+            const opt = document.createElement("option");
+            opt.value = dev.name;
+            opt.textContent = `${dev.name} (${dev.max_input_channels} In)`;
+            select.appendChild(opt);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to fetch audio devices.", "error");
+      }
+    }
+
+    async function fetchConfig() {
+      try {
+        const res = await fetch("/api/config");
+        const config = await res.json();
+        
+        // Populate inputs
+        document.getElementById("input_device").value = config.input_device;
+        document.getElementById("sample_rate").value = config.sample_rate;
+        document.getElementById("channels").value = config.channels;
+        document.getElementById("output_format").value = config.output_format;
+        document.getElementById("output_bitrate").value = config.output_bitrate;
+        document.getElementById("keep_wav_master").checked = config.keep_wav_master;
+        
+        document.getElementById("start_threshold_db").value = config.start_threshold_db;
+        document.getElementById("stop_threshold_db").value = config.stop_threshold_db;
+        document.getElementById("silence_stop_ms").value = config.silence_stop_ms;
+        document.getElementById("start_debounce_ms").value = config.start_debounce_ms;
+        document.getElementById("preroll_ms").value = config.preroll_ms;
+        document.getElementById("tail_keep_ms").value = config.tail_keep_ms;
+        document.getElementById("min_recording_ms").value = config.min_recording_ms;
+        document.getElementById("max_recording_ms").value = config.max_recording_ms;
+        document.getElementById("output_dir").value = config.output_dir;
+        document.getElementById("filename_pattern").value = config.filename_pattern;
+
+        // Apply sliders
+        startThreshold = config.start_threshold_db;
+        stopThreshold = config.stop_threshold_db;
+        updateSliders();
+        toggleBitrateField();
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to load config file settings.", "error");
+      }
+    }
+
+    function updateSliders() {
+      startThreshold = parseFloat(document.getElementById("start_threshold_db").value);
+      stopThreshold = parseFloat(document.getElementById("stop_threshold_db").value);
+      
+      // Ensure stop threshold sits below start threshold
+      if (stopThreshold >= startThreshold) {
+        stopThreshold = startThreshold - 1.0;
+        document.getElementById("stop_threshold_db").value = stopThreshold;
+      }
+      
+      document.getElementById("lblStartThreshold").textContent = `${startThreshold.toFixed(1)} dB`;
+      document.getElementById("lblStopThreshold").textContent = `${stopThreshold.toFixed(1)} dB`;
+      
+      drawChart();
+    }
+
+    function toggleBitrateField() {
+      const fmt = document.getElementById("output_format").value;
+      const bitrateGroup = document.getElementById("bitrateGroup");
+      if (fmt === "mp3" || fmt === "aac") {
+        bitrateGroup.style.display = "flex";
+      } else {
+        bitrateGroup.style.display = "none";
+      }
+    }
+
+    async function saveConfigForm(e) {
+      e.preventDefault();
+      const config = {
+        input_device: document.getElementById("input_device").value,
+        sample_rate: parseInt(document.getElementById("sample_rate").value),
+        channels: parseInt(document.getElementById("channels").value),
+        output_format: document.getElementById("output_format").value,
+        output_bitrate: document.getElementById("output_bitrate").value,
+        keep_wav_master: document.getElementById("keep_wav_master").checked,
+        
+        start_threshold_db: parseFloat(document.getElementById("start_threshold_db").value),
+        stop_threshold_db: parseFloat(document.getElementById("stop_threshold_db").value),
+        silence_stop_ms: parseInt(document.getElementById("silence_stop_ms").value),
+        start_debounce_ms: parseInt(document.getElementById("start_debounce_ms").value),
+        preroll_ms: parseInt(document.getElementById("preroll_ms").value),
+        tail_keep_ms: parseInt(document.getElementById("tail_keep_ms").value),
+        min_recording_ms: parseInt(document.getElementById("min_recording_ms").value),
+        max_recording_ms: parseInt(document.getElementById("max_recording_ms").value),
+        output_dir: document.getElementById("output_dir").value,
+        filename_pattern: document.getElementById("filename_pattern").value
+      };
+
+      try {
+        const response = await fetch("/api/config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config)
+        });
+        
+        if (response.ok) {
+          showToast("Configuration saved successfully.", "success");
+          fetchConfig();
+        } else {
+          const err = await response.json();
+          showToast(`Save failed: ${err.detail || "Validation Error"}`, "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error sending configurations to server.", "error");
+      }
+    }
+
+    async function fetchRecordings() {
+      const list = document.getElementById("recordingsList");
+      try {
+        const res = await fetch("/api/recordings");
+        const recordings = await res.json();
+        
+        if (recordings.length === 0) {
+          list.innerHTML = `<div class="empty-state">No clips captured yet. Start listening and play audio.</div>`;
+          return;
+        }
+        
+        list.innerHTML = "";
+        recordings.forEach(rec => {
+          const filename = `${rec.name}.${rec.format}`;
+          const card = document.createElement("div");
+          card.className = "recording-card";
+          card.id = `rec-${rec.name}`;
+          
+          card.innerHTML = `
+            <div class="rec-meta">
+              <div class="rec-title-row">
+                <span class="rec-name">${rec.name}</span>
+                <span class="rec-badge badge-${rec.format}">${rec.format}</span>
+              </div>
+              <div class="rec-info-row">
+                <span>${rec.created_at}</span>
+                <span>•</span>
+                <span>${formatTime(rec.duration_ms)}</span>
+                <span>•</span>
+                <span>${formatBytes(rec.size_bytes)}</span>
+              </div>
+            </div>
+            <div class="rec-actions">
+              <div class="rec-player">
+                <audio controls src="/api/recordings/download/${filename}"></audio>
+              </div>
+              <button class="icon-btn icon-btn-delete" title="Delete Clip" onclick="deleteRecording('${filename}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function deleteRecording(filename) {
+      if(!confirm(`Are you sure you want to delete ${filename}?`)) {
+        return;
+      }
+      
+      const stem = filename.split('.')[0];
+      const card = document.getElementById(`rec-${stem}`);
+      
+      try {
+        const response = await fetch(`/api/recordings/${filename}`, { method: "DELETE" });
+        if(response.ok) {
+          showToast("Recording deleted.", "success");
+          if(card) {
+            card.classList.add("fade-out");
+            setTimeout(() => card.remove(), 300);
+          } else {
+            fetchRecordings();
+          }
+        } else {
+          showToast("Failed to delete recording.", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error calling delete endpoint.", "error");
+      }
+    }
+
+    // Toast manager
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      
+      container.appendChild(toast);
+      
+      // Auto dismiss
+      setTimeout(() => {
+        toast.style.animation = "fadeOut 0.3s forwards";
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Startup Initializations
+    async function init() {
+      resizeCanvas();
+      await fetchDevices();
+      await fetchConfig();
+      await fetchRecordings();
+      connectWS();
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

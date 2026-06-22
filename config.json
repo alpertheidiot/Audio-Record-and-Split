@@ -1,0 +1,19 @@
+{
+  "input_device": "BlackHole 2ch",
+  "sample_rate": 48000,
+  "bit_depth": 24,
+  "channels": 2,
+  "start_threshold_db": -80.0,
+  "stop_threshold_db": -85.0,
+  "silence_stop_ms": 2000,
+  "start_debounce_ms": 150,
+  "preroll_ms": 500,
+  "tail_keep_ms": 1000,
+  "min_recording_ms": 10000,
+  "max_recording_ms": 900000,
+  "output_format": "flac",
+  "output_bitrate": "256k",
+  "keep_wav_master": false,
+  "output_dir": "./recordings",
+  "filename_pattern": "{ts}"
+}
