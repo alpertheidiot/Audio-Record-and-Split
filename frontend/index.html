@@ -971,6 +971,12 @@
         <div class="canvas-container">
           <canvas id="rollingChart"></canvas>
         </div>
+        <!-- History Scrollbar -->
+        <div class="scrollbar-container" style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Past</span>
+          <input type="range" id="historyScroll" class="custom-progress-bar" min="0" max="0" value="0" style="flex: 1;" oninput="onHistoryScroll()">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Live</span>
+        </div>
       </section>
       
     </main>
@@ -1137,7 +1143,10 @@
     const canvas = document.getElementById("rollingChart");
     const ctx = canvas.getContext("2d");
     let dbHistory = [];
-    const maxHistoryPoints = 600; // ~12 seconds of history
+    const maxHistoryPoints = 180000; // ~60 mins of history
+    const viewWindowSize = 600;      // ~12 seconds of history visible at once
+    let autoScroll = true;
+    let currentScrollIndex = 0;
 
     // Resize canvas on start
     function resizeCanvas() {
@@ -1151,8 +1160,19 @@
     window.addEventListener("resize", resizeCanvas);
     
     // Initialize DB history buffer
-    for(let i=0; i<maxHistoryPoints; i++) {
+    for(let i=0; i<viewWindowSize; i++) {
       dbHistory.push(-90);
+    }
+
+    function onHistoryScroll() {
+      const scrollBar = document.getElementById("historyScroll");
+      currentScrollIndex = parseInt(scrollBar.value);
+      if (currentScrollIndex >= parseInt(scrollBar.max)) {
+        autoScroll = true;
+      } else {
+        autoScroll = false;
+      }
+      drawChart();
     }
 
     // Connect WebSocket
@@ -1261,6 +1281,24 @@
       dbHistory.push(level);
       if(dbHistory.length > maxHistoryPoints) {
         dbHistory.shift();
+        if (!autoScroll && currentScrollIndex > 0) currentScrollIndex--;
+      }
+      
+      const scrollBar = document.getElementById("historyScroll");
+      if (dbHistory.length <= viewWindowSize) {
+          scrollBar.max = 0;
+          scrollBar.value = 0;
+          scrollBar.disabled = true;
+          currentScrollIndex = 0;
+      } else {
+          scrollBar.disabled = false;
+          scrollBar.max = dbHistory.length - viewWindowSize;
+          if (autoScroll) {
+              scrollBar.value = scrollBar.max;
+              currentScrollIndex = parseInt(scrollBar.max);
+          } else {
+              scrollBar.value = currentScrollIndex;
+          }
       }
       
       drawChart();
@@ -1285,14 +1323,33 @@
         ctx.stroke();
       }
 
+      // Vertical 1-second grid lines when not auto-scrolling
+      if (!autoScroll) {
+          const sr = parseInt(document.getElementById("sample_rate").value) || 48000;
+          const pointsPerSec = sr / 1024;
+          const spacingX = (pointsPerSec / (viewWindowSize - 1)) * w;
+          
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          // Draw from the right edge backwards so it aligns nicely
+          for (let x = w - spacingX; x > 0; x -= spacingX) {
+              ctx.moveTo(x, 0);
+              ctx.lineTo(x, h);
+          }
+          ctx.stroke();
+      }
+
       // Draw Level Fill Area
       ctx.beginPath();
       ctx.moveTo(0, h);
       
-      for (let i = 0; i < dbHistory.length; i++) {
-        const x = (i / (maxHistoryPoints - 1)) * w;
+      const visibleHistory = dbHistory.slice(currentScrollIndex, currentScrollIndex + viewWindowSize);
+      
+      for (let i = 0; i < visibleHistory.length; i++) {
+        const x = (i / (viewWindowSize - 1)) * w;
         // DB value to Y pixel mapping
-        const val = dbHistory[i];
+        const val = visibleHistory[i];
         const pct = (val + 90) / 90; // 0 (silence) to 1 (full scale)
         const y = h - (pct * h);
         ctx.lineTo(x, y);
@@ -1311,9 +1368,9 @@
 
       // Draw Line Envelope
       ctx.beginPath();
-      for (let i = 0; i < dbHistory.length; i++) {
-        const x = (i / (maxHistoryPoints - 1)) * w;
-        const val = dbHistory[i];
+      for (let i = 0; i < visibleHistory.length; i++) {
+        const x = (i / (viewWindowSize - 1)) * w;
+        const val = visibleHistory[i];
         const pct = (val + 90) / 90;
         const y = h - (pct * h);
         if (i === 0) ctx.moveTo(x, y);
