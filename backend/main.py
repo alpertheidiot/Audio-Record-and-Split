@@ -367,7 +367,7 @@ def convert_recording(filename: str, request: ConvertRequest, background_tasks: 
     elif target_format == "wav":
         ffmpeg_args = ["-c:a", "pcm_s16le"]
         
-    cmd = [ffmpeg_path, "-y", "-i", str(src_path)] + ffmpeg_args + [str(dest_path)]
+    cmd = [ffmpeg_path, "-y", "-i", str(src_path), "-vn"] + ffmpeg_args + [str(dest_path)]
     
     background_tasks.add_task(_run_ffmpeg_convert, cmd, candidate)
     

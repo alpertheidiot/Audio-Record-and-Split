@@ -138,7 +138,7 @@ class TranscodeQueue:
                 self.status[filename] = 'failed'
             return
             
-        cmd = [self.ffmpeg_path, "-y", "-i", str(wav_path)] + ffmpeg_args + [str(out_path)]
+        cmd = [self.ffmpeg_path, "-y", "-i", str(wav_path), "-vn"] + ffmpeg_args + [str(out_path)]
         
         try:
             # Shell out to ffmpeg
