@@ -18,6 +18,7 @@ class AppConfig(BaseModel):
     
     output_format: str = Field(default="mp3", description="Output file format (mp3, flac, aac, wav)")
     output_bitrate: str = Field(default="320k", description="Bitrate for mp3/aac (e.g. 192k, 256k, 320k)")
+    aac_vbr: bool = Field(default=True, description="Enable Variable Bitrate (VBR) for AAC instead of CBR")
     keep_wav_master: bool = Field(default=True, description="Keep original lossless WAV master")
     output_dir: str = Field(default="./recordings", description="Output folder for files")
     filename_pattern: str = Field(default="{ts}", description="Filename template: {ts} (timestamp), {n} (index)")
@@ -85,3 +86,4 @@ class RecordingInfo(BaseModel):
 class ConvertRequest(BaseModel):
     target_format: str
     bitrate: Optional[str] = "320k"
+    aac_vbr: Optional[bool] = True

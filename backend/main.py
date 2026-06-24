@@ -350,25 +350,61 @@ def convert_recording(filename: str, request: ConvertRequest, background_tasks: 
         
     dest_path = out_dir / candidate
     
-    ffmpeg_path = shutil.which("ffmpeg")
-    if not ffmpeg_path:
-        raise HTTPException(status_code=500, detail="FFmpeg not found on the system path")
+    if target_format == "aac":
+        afconvert_path = shutil.which("afconvert")
+        if not afconvert_path:
+            raise HTTPException(status_code=500, detail="afconvert not found on the system path")
+            
+        br_str = (request.bitrate or "256k").lower().strip()
+        if br_str.endswith("k"):
+            try:
+                bitrate_bps = int(br_str[:-1]) * 1000
+            except ValueError:
+                bitrate_bps = 256000
+        else:
+            try:
+                bitrate_bps = int(br_str)
+                if bitrate_bps < 1000:
+                    bitrate_bps *= 1000
+            except ValueError:
+                bitrate_bps = 256000
+                
+        if request.aac_vbr:
+            cmd = [
+                afconvert_path,
+                "-f", "m4af",
+                "-d", "aac",
+                "-s", "3",
+                "-u", "vbrq", "127",
+                str(src_path),
+                str(dest_path)
+            ]
+        else:
+            cmd = [
+                afconvert_path,
+                "-f", "m4af",
+                "-d", "aac",
+                "-q", "127",
+                "-s", "0",
+                "-b", str(bitrate_bps),
+                str(src_path),
+                str(dest_path)
+            ]
+    else:
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not ffmpeg_path:
+            raise HTTPException(status_code=500, detail="FFmpeg not found on the system path")
+            
+        ffmpeg_args = []
+        if target_format == "mp3":
+            ffmpeg_args = ["-codec:a", "libmp3lame", "-b:a", request.bitrate or "320k"]
+        elif target_format == "flac":
+            ffmpeg_args = ["-c:a", "flac"]
+        elif target_format == "wav":
+            ffmpeg_args = ["-c:a", "pcm_s16le"]
+            
+        cmd = [ffmpeg_path, "-y", "-i", str(src_path), "-vn"] + ffmpeg_args + [str(dest_path)]
         
-    ffmpeg_args = []
-    if target_format == "mp3":
-        ffmpeg_args = ["-codec:a", "libmp3lame", "-b:a", request.bitrate or "320k"]
-    elif target_format == "flac":
-        ffmpeg_args = ["-c:a", "flac"]
-    elif target_format == "aac":
-        br = request.bitrate or "320k"
-        if not br.endswith("k"):
-            br = f"{br}k"
-        ffmpeg_args = ["-c:a", "aac", "-b:a", br]
-    elif target_format == "wav":
-        ffmpeg_args = ["-c:a", "pcm_s16le"]
-        
-    cmd = [ffmpeg_path, "-y", "-i", str(src_path), "-vn"] + ffmpeg_args + [str(dest_path)]
-    
     background_tasks.add_task(_run_ffmpeg_convert, cmd, candidate)
     
     return {

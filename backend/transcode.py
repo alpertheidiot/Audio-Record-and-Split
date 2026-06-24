@@ -11,12 +11,13 @@ logger = logging.getLogger("silencecut.transcode")
 logger.setLevel(logging.INFO)
 
 class TranscodeJob:
-    def __init__(self, wav_path: str, output_dir: str, output_format: str, output_bitrate: str, keep_wav_master: bool):
+    def __init__(self, wav_path: str, output_dir: str, output_format: str, output_bitrate: str, keep_wav_master: bool, aac_vbr: bool = True):
         self.wav_path = wav_path
         self.output_dir = output_dir
         self.output_format = output_format.lower().strip()
         self.output_bitrate = output_bitrate
         self.keep_wav_master = keep_wav_master
+        self.aac_vbr = aac_vbr
         self.filename = Path(wav_path).stem
 
 class TranscodeQueue:
@@ -30,9 +31,16 @@ class TranscodeQueue:
         # Verify ffmpeg presence
         self.ffmpeg_path = shutil.which("ffmpeg")
         if not self.ffmpeg_path:
-            logger.error("FFmpeg not found on PATH! Transcoding will fail. Please install ffmpeg (e.g. brew install ffmpeg).")
+            logger.error("FFmpeg not found on PATH! Transcoding to MP3/FLAC will fail.")
         else:
             logger.info(f"FFmpeg found at: {self.ffmpeg_path}")
+            
+        # Verify afconvert presence
+        self.afconvert_path = shutil.which("afconvert")
+        if not self.afconvert_path:
+            logger.error("afconvert not found on PATH! Transcoding to AAC will fail.")
+        else:
+            logger.info(f"afconvert found at: {self.afconvert_path}")
 
     def check_ffmpeg(self) -> bool:
         return self.ffmpeg_path is not None
@@ -53,13 +61,13 @@ class TranscodeQueue:
             self.worker_thread.join(timeout=2.0)
             logger.info("Transcode worker thread stopped.")
 
-    def enqueue(self, wav_path: str, output_dir: str, output_format: str, output_bitrate: str, keep_wav_master: bool):
+    def enqueue(self, wav_path: str, output_dir: str, output_format: str, output_bitrate: str, keep_wav_master: bool, aac_vbr: bool = True):
         filename = Path(wav_path).stem
         
         with self.lock:
             self.status[filename] = 'pending'
             
-        job = TranscodeJob(wav_path, output_dir, output_format, output_bitrate, keep_wav_master)
+        job = TranscodeJob(wav_path, output_dir, output_format, output_bitrate, keep_wav_master, aac_vbr)
         self.queue.put(job)
         logger.info(f"Enqueued transcode job for {filename} (format: {output_format})")
 
@@ -106,23 +114,75 @@ class TranscodeQueue:
                 self.status[filename] = 'done'
             return
 
-        # Prepare output extension and ffmpeg flags
+        # Prepare output extension and command
         ext = ""
-        ffmpeg_args = []
+        cmd = []
+        is_afconvert = False
         
         if job.output_format == "mp3":
             ext = ".mp3"
-            ffmpeg_args = ["-codec:a", "libmp3lame", "-b:a", job.output_bitrate]
+            if not self.ffmpeg_path:
+                logger.error("Cannot transcode: ffmpeg executable is missing.")
+                with self.lock:
+                    self.status[filename] = 'failed'
+                return
+            cmd = [self.ffmpeg_path, "-y", "-i", str(wav_path), "-vn", "-codec:a", "libmp3lame", "-b:a", job.output_bitrate, str(out_dir / f"{filename}{ext}")]
         elif job.output_format == "flac":
             ext = ".flac"
-            ffmpeg_args = ["-c:a", "flac"]
+            if not self.ffmpeg_path:
+                logger.error("Cannot transcode: ffmpeg executable is missing.")
+                with self.lock:
+                    self.status[filename] = 'failed'
+                return
+            cmd = [self.ffmpeg_path, "-y", "-i", str(wav_path), "-vn", "-c:a", "flac", str(out_dir / f"{filename}{ext}")]
         elif job.output_format == "aac":
             ext = ".m4a"
-            # Parse target bitrate for AAC, defaulting to 320k
-            br = job.output_bitrate
-            if not br.endswith("k"):
-                br = "320k"
-            ffmpeg_args = ["-c:a", "aac", "-b:a", br]
+            afconvert_path = shutil.which("afconvert")
+            if not afconvert_path:
+                logger.error("Cannot transcode to AAC: afconvert is missing on this system.")
+                with self.lock:
+                    self.status[filename] = 'failed'
+                return
+                
+            # Parse target bitrate for AAC (only used for CBR)
+            br_str = job.output_bitrate.lower().strip()
+            if br_str.endswith("k"):
+                try:
+                    bitrate_bps = int(br_str[:-1]) * 1000
+                except ValueError:
+                    bitrate_bps = 256000
+            else:
+                try:
+                    bitrate_bps = int(br_str)
+                    if bitrate_bps < 1000:
+                        bitrate_bps *= 1000
+                except ValueError:
+                    bitrate_bps = 256000
+                    
+            if job.aac_vbr:
+                # VBR allocation strategy (strategy 3, quality 127)
+                cmd = [
+                    afconvert_path,
+                    "-f", "m4af",
+                    "-d", "aac",
+                    "-s", "3",
+                    "-u", "vbrq", "127",
+                    str(wav_path),
+                    str(out_dir / f"{filename}{ext}")
+                ]
+            else:
+                # CBR allocation strategy (strategy 0, quality 127)
+                cmd = [
+                    afconvert_path,
+                    "-f", "m4af",
+                    "-d", "aac",
+                    "-q", "127",
+                    "-s", "0",
+                    "-b", str(bitrate_bps),
+                    str(wav_path),
+                    str(out_dir / f"{filename}{ext}")
+                ]
+            is_afconvert = True
         else:
             logger.error(f"Unsupported output format: {job.output_format}")
             with self.lock:
@@ -131,18 +191,10 @@ class TranscodeQueue:
 
         out_path = out_dir / f"{filename}{ext}"
         
-        # Build command: ffmpeg -y -i <in> <flags> <out>
-        if not self.ffmpeg_path:
-            logger.error("Cannot transcode: ffmpeg executable is missing.")
-            with self.lock:
-                self.status[filename] = 'failed'
-            return
-            
-        cmd = [self.ffmpeg_path, "-y", "-i", str(wav_path), "-vn"] + ffmpeg_args + [str(out_path)]
-        
         try:
-            # Shell out to ffmpeg
-            logger.info(f"Running ffmpeg command: {' '.join(cmd)}")
+            # Shell out to transcoder
+            transcoder_name = "afconvert" if is_afconvert else "ffmpeg"
+            logger.info(f"Running {transcoder_name} command: {' '.join(cmd)}")
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
             
             logger.info(f"Transcoding completed successfully for {filename} -> {out_path.name}")

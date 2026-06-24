@@ -455,7 +455,8 @@ class AudioEngine:
                 output_dir=str(out_dir),
                 output_format=self.config.output_format,
                 output_bitrate=self.config.output_bitrate,
-                keep_wav_master=self.config.keep_wav_master
+                keep_wav_master=self.config.keep_wav_master,
+                aac_vbr=self.config.aac_vbr
             )
             
         except Exception as e:

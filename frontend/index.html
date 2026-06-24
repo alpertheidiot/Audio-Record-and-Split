@@ -1310,6 +1310,13 @@
               <span class="switch-slider"></span>
             </label>
           </div>
+          <div id="aacVbrGroup" class="switch-container" style="margin-top: 0.75rem; display: none;">
+            <span style="font-size: 0.9rem; color: var(--text-muted);">AAC Variable Bitrate (VBR)</span>
+            <label class="switch">
+              <input type="checkbox" id="aac_vbr" onchange="toggleAacVbr()">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
         </div>
 
         <!-- DSP Gating Settings -->
@@ -1875,6 +1882,7 @@
         document.getElementById("output_format").value = config.output_format;
         document.getElementById("output_bitrate").value = config.output_bitrate;
         document.getElementById("keep_wav_master").checked = config.keep_wav_master;
+        document.getElementById("aac_vbr").checked = config.aac_vbr;
         
         document.getElementById("start_threshold_db").value = config.start_threshold_db;
         document.getElementById("stop_threshold_db").value = config.stop_threshold_db;
@@ -1917,11 +1925,27 @@
     function toggleBitrateField() {
       const fmt = document.getElementById("output_format").value;
       const bitrateGroup = document.getElementById("bitrateGroup");
-      if (fmt === "mp3" || fmt === "aac") {
+      const aacVbrGroup = document.getElementById("aacVbrGroup");
+      
+      if (fmt === "mp3") {
         bitrateGroup.style.display = "flex";
+        aacVbrGroup.style.display = "none";
+      } else if (fmt === "aac") {
+        aacVbrGroup.style.display = "flex";
+        const vbrEnabled = document.getElementById("aac_vbr").checked;
+        if (vbrEnabled) {
+          bitrateGroup.style.display = "none";
+        } else {
+          bitrateGroup.style.display = "flex";
+        }
       } else {
         bitrateGroup.style.display = "none";
+        aacVbrGroup.style.display = "none";
       }
+    }
+
+    function toggleAacVbr() {
+      toggleBitrateField();
     }
 
     async function saveConfigForm(e) {
@@ -1932,6 +1956,7 @@
         channels: parseInt(document.getElementById("channels").value),
         output_format: document.getElementById("output_format").value,
         output_bitrate: document.getElementById("output_bitrate").value,
+        aac_vbr: document.getElementById("aac_vbr").checked,
         keep_wav_master: document.getElementById("keep_wav_master").checked,
         
         start_threshold_db: parseFloat(document.getElementById("start_threshold_db").value),
@@ -2173,7 +2198,8 @@
           },
           body: JSON.stringify({
             target_format: targetFormat,
-            bitrate: "320k"
+            bitrate: document.getElementById("output_bitrate").value,
+            aac_vbr: document.getElementById("aac_vbr").checked
           })
         });
         
