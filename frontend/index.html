@@ -894,6 +894,276 @@
     @keyframes fadeOut {
       to { opacity: 0; transform: translateY(-10px); }
     }
+
+    /* Modal Analyzer Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 5, 8, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      width: 100%;
+      max-width: 1000px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      transform: scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow: hidden;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0.75rem;
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 350px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .analyzer-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 1rem;
+      color: var(--text-muted);
+      padding: 3rem 0;
+    }
+
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid rgba(139, 92, 246, 0.1);
+      border-radius: 50%;
+      border-top-color: var(--accent-purple);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .analyzer-info-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-glass);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .analyzer-info-bar span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .analyzer-info-bar span::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-teal);
+    }
+
+    .waveform-scroll-container {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin-bottom: 1.25rem;
+    }
+
+    .waveform-canvas {
+      display: block;
+      height: 170px;
+      margin-top: 30px;
+      cursor: pointer;
+    }
+
+    .time-ticks-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: none;
+    }
+
+    .analyzer-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent-coral);
+      box-shadow: 0 0 8px var(--accent-coral-glow);
+      z-index: 20;
+      pointer-events: none;
+      left: 0;
+    }
+
+    .analyzer-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .analyzer-time-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .time-separator {
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    .speed-selector {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-glass);
+      border-radius: 0.5rem;
+      padding: 0.2rem;
+      gap: 0.2rem;
+    }
+
+    .speed-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.35rem 0.7rem;
+      border-radius: 0.35rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+
+    .speed-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .speed-btn.active {
+      background: var(--accent-purple);
+      color: #fff;
+    }
+
+    .zoom-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .control-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .analyzer-view-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-small {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      border-radius: 0.5rem;
+    }
+
+    .btn-small.active {
+      background: var(--accent-teal);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .icon-btn-analyze:hover {
+      background: var(--accent-purple-glow);
+      color: var(--accent-purple);
+      border-color: var(--accent-purple);
+    }
+
+    .scrollbar-custom::-webkit-scrollbar {
+      height: 8px;
+    }
+    .scrollbar-custom::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.01);
+      border-radius: 4px;
+    }
+    .scrollbar-custom::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -1129,6 +1399,112 @@
       <span>Stop Services</span>
     </button>
   </footer>
+
+  <div id="analyzerModal" class="modal-overlay">
+    <div class="modal-content panel">
+      <div class="modal-header">
+        <h2 id="analyzerTitle" style="font-size: 1.4rem; background: linear-gradient(to right, #ffffff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Analyze Track</h2>
+        <button class="icon-btn icon-btn-delete" title="Close" onclick="closeAnalyzer()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Hidden Audio Element -->
+        <audio id="analyzerAudio" style="display: none;"></audio>
+        
+        <!-- Loading State -->
+        <div id="analyzerLoading" class="analyzer-loading">
+          <div class="spinner"></div>
+          <p style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; color: #fff;">Downloading and decoding audio track...</p>
+          <span style="font-size: 0.85rem; max-width: 300px; text-align: center;">Longer files may take a few seconds to process completely.</span>
+        </div>
+
+        <!-- Main Workspace -->
+        <div id="analyzerWorkspace" style="display: none; width: 100%;">
+          <!-- Info Bar -->
+          <div class="analyzer-info-bar">
+            <span>Format: <strong id="analyzerMetaFormat" style="color: #fff;">WAV</strong></span>
+            <span>Sample Rate: <strong id="analyzerMetaSampleRate" style="color: #fff;">48,000 Hz</strong></span>
+            <span>Channels: <strong id="analyzerMetaChannels" style="color: #fff;">Stereo</strong></span>
+            <span>Duration: <strong id="analyzerMetaDuration" style="color: #fff;">00:12.450</strong></span>
+          </div>
+
+          <!-- Waveform Scroll Viewer -->
+          <div class="waveform-scroll-container scrollbar-custom" id="waveformScrollContainer">
+            <!-- Absolute Playhead Line -->
+            <div id="analyzerPlayhead" class="analyzer-playhead"></div>
+            <!-- Time Ticks Canvas -->
+            <canvas id="analyzerTimeTicks" class="time-ticks-canvas"></canvas>
+            <!-- Waveform Canvas -->
+            <canvas id="analyzerWaveformCanvas" class="waveform-canvas"></canvas>
+          </div>
+
+          <!-- Primary Controls -->
+          <div class="analyzer-controls">
+            <!-- Play & Speed -->
+            <div class="option-group">
+              <button id="btnAnalyzerPlay" class="btn btn-primary" onclick="toggleAnalyzerPlay()" style="padding: 0.6rem 1.2rem; min-width: 100px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Play</span>
+              </button>
+              
+              <div class="speed-selector">
+                <span class="control-label" style="padding-left: 0.5rem; margin-right: 0.25rem;">Speed:</span>
+                <button id="speed-10" class="speed-btn active" onclick="setAnalyzerSpeed(1.0)">1x</button>
+                <button id="speed-05" class="speed-btn" onclick="setAnalyzerSpeed(0.5)">0.5x</button>
+                <button id="speed-025" class="speed-btn" onclick="setAnalyzerSpeed(0.25)">0.25x</button>
+              </div>
+            </div>
+
+            <!-- Time counter -->
+            <div class="analyzer-time-display">
+              <span id="analyzerCurrentTime" style="color: var(--accent-purple);">00:00.000</span>
+              <span class="time-separator">/</span>
+              <span id="analyzerTotalTime">00:00.000</span>
+            </div>
+
+            <!-- Zoom & Follow -->
+            <div class="option-group">
+              <div class="zoom-control">
+                <span class="control-label">Zoom:</span>
+                <input type="range" id="analyzerZoom" class="custom-progress-bar" min="50" max="800" value="150" style="width: 100px;" oninput="onAnalyzerZoomChange()">
+              </div>
+              
+              <div class="switch-container" style="gap: 0.5rem;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Follow</span>
+                <label class="switch">
+                  <input type="checkbox" id="analyzerFollowPlayhead" checked>
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- View Options -->
+          <div class="analyzer-view-options">
+            <div class="option-group">
+              <span class="control-label">Render Channel:</span>
+              <select id="analyzerChannelSelect" class="form-control" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.85rem; height: auto;" onchange="drawAnalyzerWaveform()">
+                <option value="all">All Channels</option>
+                <option value="0">Left / Channel 1</option>
+                <option value="1">Right / Channel 2</option>
+              </select>
+            </div>
+
+            <div class="option-group">
+              <span class="control-label">Envelope:</span>
+              <button id="btnScaleLinear" class="btn btn-secondary btn-small active" onclick="setAnalyzerScale('linear')">Linear</button>
+              <button id="btnScaleDB" class="btn btn-secondary btn-small" onclick="setAnalyzerScale('db')">dB Scale</button>
+            </div>
+          </div>
+          
+          <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-left: 2px solid var(--accent-amber); padding-left: 0.75rem;">
+            💡 <strong>Troubleshooting Hint:</strong> To inspect if noise spikes or pops are added during stream pre-roll, zoom in and click on the waveform at the start. Play at 0.5x speed while looking at the dB scale to locate signal issues relative to the gating thresholds.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="toastContainer" class="toast-container"></div>
 
@@ -1626,6 +2002,9 @@
                 </div>
               </div>
               <div class="rec-actions">
+                <button class="icon-btn icon-btn-analyze" title="Analyze Track" onclick="openAnalyzer('${filename}')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h1m8-9v18m8-9h1m-12-6v12m8-8v4"/></svg>
+                </button>
                 <div class="convert-dropdown">
                   <select id="convert-format-${id}" class="convert-select">
                     <option value="mp3">MP3</option>
@@ -1845,6 +2224,415 @@
         toast.style.animation = "fadeOut 0.3s forwards";
         setTimeout(() => toast.remove(), 300);
       }, 4000);
+    }
+
+    // Track Analyzer Variables
+    let decodedAudioBuffer = null;
+    let currentAnalyzerFilename = "";
+    let analyzerScale = "linear";
+    let analyzerPixelsPerSecond = 150;
+    let analyzerPlayheadRafId = null;
+    let analyzerAudioSpeed = 1.0;
+
+    async function openAnalyzer(filename) {
+      currentAnalyzerFilename = filename;
+      
+      const modal = document.getElementById("analyzerModal");
+      modal.style.display = "flex";
+      modal.offsetHeight; // Force reflow
+      modal.classList.add("active");
+      
+      // Reset Workspace & Loader
+      document.getElementById("analyzerTitle").textContent = `Analyze Track: ${filename}`;
+      document.getElementById("analyzerLoading").style.display = "flex";
+      document.getElementById("analyzerWorkspace").style.display = "none";
+      
+      // Pause any other playing audio on the page
+      document.querySelectorAll('audio').forEach(aud => {
+        if (aud.id !== "analyzerAudio" && !aud.paused) {
+          aud.pause();
+          const otherId = aud.id.replace('audio-', '');
+          const otherBtn = document.getElementById(`play-btn-${otherId}`);
+          if (otherBtn) {
+            otherBtn.querySelector('.play-icon').style.display = 'block';
+            otherBtn.querySelector('.pause-icon').style.display = 'none';
+          }
+        }
+      });
+
+      const audioUrl = `/api/recordings/download/${filename}`;
+      
+      try {
+        // Fetch track audio data
+        const response = await fetch(audioUrl);
+        if (!response.ok) throw new Error("Failed to download audio file.");
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Decode audio
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        decodedAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        // Setup audio element
+        const audio = document.getElementById("analyzerAudio");
+        audio.src = audioUrl;
+        audio.playbackRate = analyzerAudioSpeed;
+        
+        // Set metadata
+        document.getElementById("analyzerMetaSampleRate").textContent = `${decodedAudioBuffer.sampleRate.toLocaleString()} Hz`;
+        const channels = decodedAudioBuffer.numberOfChannels;
+        document.getElementById("analyzerMetaChannels").textContent = channels === 1 ? "Mono" : channels === 2 ? "Stereo" : `${channels} Channels`;
+        document.getElementById("analyzerMetaFormat").textContent = filename.split('.').pop().toUpperCase();
+        
+        const duration = decodedAudioBuffer.duration;
+        document.getElementById("analyzerMetaDuration").textContent = formatDurationMs(duration);
+        document.getElementById("analyzerTotalTime").textContent = formatDurationMs(duration);
+        document.getElementById("analyzerCurrentTime").textContent = formatDurationMs(0);
+        
+        // Setup channel selector
+        const chSelect = document.getElementById("analyzerChannelSelect");
+        chSelect.innerHTML = '<option value="all">All Channels</option>';
+        for (let i = 0; i < channels; i++) {
+          const name = i === 0 ? "Left / Channel 1" : i === 1 ? "Right / Channel 2" : `Channel ${i + 1}`;
+          chSelect.innerHTML += `<option value="${i}">${name}</option>`;
+        }
+        
+        // Display workspace
+        document.getElementById("analyzerLoading").style.display = "none";
+        document.getElementById("analyzerWorkspace").style.display = "block";
+        
+        // Draw initial waveform
+        resizeAnalyzerCanvas();
+        
+        // Bind audio events
+        audio.onplay = () => {
+          const playBtn = document.getElementById("btnAnalyzerPlay");
+          playBtn.querySelector("span").textContent = "Pause";
+          playBtn.querySelector("svg").innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+          startPlayheadLoop();
+        };
+        
+        audio.onpause = () => {
+          const playBtn = document.getElementById("btnAnalyzerPlay");
+          playBtn.querySelector("span").textContent = "Play";
+          playBtn.querySelector("svg").innerHTML = `<polygon points="5 3 19 12 5 21 5 3"/>`;
+          stopPlayheadLoop();
+        };
+        
+        audio.onended = () => {
+          const playBtn = document.getElementById("btnAnalyzerPlay");
+          playBtn.querySelector("span").textContent = "Play";
+          playBtn.querySelector("svg").innerHTML = `<polygon points="5 3 19 12 5 21 5 3"/>`;
+          stopPlayheadLoop();
+          audio.currentTime = 0;
+          updatePlayheadPosition();
+        };
+
+        // Click on waveform to seek
+        const scrollContainer = document.getElementById("waveformScrollContainer");
+        scrollContainer.onclick = (e) => {
+          if (e.target.tagName !== "CANVAS") return;
+          
+          const rect = e.target.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const ratio = clickX / rect.width;
+          
+          audio.currentTime = ratio * audio.duration;
+          updatePlayheadPosition();
+        };
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("analyzerLoading").innerHTML = `
+          <div style="color: var(--accent-coral); font-size: 1.25rem; font-family: 'Outfit'; font-weight: 600;">⚠️ Failed to load track</div>
+          <p style="margin-top: 0.5rem; text-align: center; font-size: 0.9rem;">${err.message || "An error occurred while fetching or decoding the track."}</p>
+          <button class="btn btn-secondary" onclick="closeAnalyzer()" style="margin-top: 1rem;">Close</button>
+        `;
+      }
+    }
+
+    function closeAnalyzer() {
+      const audio = document.getElementById("analyzerAudio");
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+      }
+      
+      stopPlayheadLoop();
+      decodedAudioBuffer = null;
+      
+      const modal = document.getElementById("analyzerModal");
+      modal.classList.remove("active");
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 250);
+    }
+
+    function toggleAnalyzerPlay() {
+      const audio = document.getElementById("analyzerAudio");
+      if (!audio) return;
+      if (audio.paused) {
+        audio.play().catch(err => {
+          console.error("Playback error:", err);
+          showToast("Error starting playback. Try clicking again.", "error");
+        });
+      } else {
+        audio.pause();
+      }
+    }
+
+    function setAnalyzerSpeed(speed) {
+      analyzerAudioSpeed = speed;
+      const audio = document.getElementById("analyzerAudio");
+      if (audio) {
+        audio.playbackRate = speed;
+      }
+      
+      document.querySelectorAll(".speed-btn").forEach(btn => btn.classList.remove("active"));
+      if (speed === 1.0) document.getElementById("speed-10").classList.add("active");
+      else if (speed === 0.5) document.getElementById("speed-05").classList.add("active");
+      else if (speed === 0.25) document.getElementById("speed-025").classList.add("active");
+    }
+
+    function setAnalyzerScale(scale) {
+      analyzerScale = scale;
+      
+      document.getElementById("btnScaleLinear").classList.toggle("active", scale === "linear");
+      document.getElementById("btnScaleDB").classList.toggle("active", scale === "db");
+      
+      drawAnalyzerWaveform();
+    }
+
+    function onAnalyzerZoomChange() {
+      const slider = document.getElementById("analyzerZoom");
+      analyzerPixelsPerSecond = parseInt(slider.value);
+      resizeAnalyzerCanvas();
+    }
+
+    function resizeAnalyzerCanvas() {
+      if (!decodedAudioBuffer) return;
+      
+      const canvas = document.getElementById("analyzerWaveformCanvas");
+      const ticksCanvas = document.getElementById("analyzerTimeTicks");
+      const container = document.getElementById("waveformScrollContainer");
+      
+      const duration = decodedAudioBuffer.duration;
+      // Ensure canvas spans at least the container width
+      const width = Math.max(container.clientWidth, duration * analyzerPixelsPerSecond);
+      
+      canvas.style.width = `${width}px`;
+      ticksCanvas.style.width = `${width}px`;
+      
+      const dpr = window.devicePixelRatio || 1;
+      const height = canvas.clientHeight;
+      const ticksHeight = ticksCanvas.clientHeight;
+      
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      
+      ticksCanvas.width = width * dpr;
+      ticksCanvas.height = ticksHeight * dpr;
+      
+      drawAnalyzerWaveform();
+      drawAnalyzerTicks();
+      updatePlayheadPosition();
+    }
+
+    function drawAnalyzerWaveform() {
+      const canvas = document.getElementById("analyzerWaveformCanvas");
+      if (!canvas || !decodedAudioBuffer) return;
+      
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width;
+      const h = canvas.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const chSelect = document.getElementById("analyzerChannelSelect").value;
+      let channelsToRender = [];
+      
+      if (chSelect === "all") {
+        for (let c = 0; c < decodedAudioBuffer.numberOfChannels; c++) {
+          channelsToRender.push(c);
+        }
+      } else {
+        channelsToRender.push(parseInt(chSelect));
+      }
+      
+      const numCh = channelsToRender.length;
+      const chHeight = h / numCh;
+      
+      // Symmetrical gradient style matching silencecut branding
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "rgba(20, 184, 166, 0.85)");   // Teal at top
+      grad.addColorStop(0.5, "rgba(139, 92, 246, 0.85)"); // Purple at center
+      grad.addColorStop(1, "rgba(20, 184, 166, 0.85)");   // Teal at bottom
+      
+      for (let cIdx = 0; cIdx < numCh; cIdx++) {
+        const ch = channelsToRender[cIdx];
+        const data = decodedAudioBuffer.getChannelData(ch);
+        const yCenter = (cIdx * chHeight) + (chHeight / 2);
+        
+        // Zero-line
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(0, yCenter);
+        ctx.lineTo(w, yCenter);
+        ctx.stroke();
+        
+        const samplesPerPixel = Math.max(1, Math.floor(data.length / w));
+        
+        ctx.fillStyle = grad;
+        
+        for (let pixel = 0; pixel < w; pixel++) {
+          const startSample = pixel * samplesPerPixel;
+          const endSample = Math.min(data.length, startSample + samplesPerPixel);
+          
+          let minVal = 0.0;
+          let maxVal = 0.0;
+          
+          for (let s = startSample; s < endSample; s++) {
+            const val = data[s];
+            if (val < minVal) minVal = val;
+            if (val > maxVal) maxVal = val;
+          }
+          
+          if (analyzerScale === "db") {
+            const dbMax = 20 * Math.log10(Math.abs(maxVal) + 1e-5);
+            const dbMin = 20 * Math.log10(Math.abs(minVal) + 1e-5);
+            
+            const mapDB = (db) => {
+              const clamped = Math.max(-60, Math.min(0, db));
+              // Map -60dB..0dB to 0..chHeight/2
+              return ((clamped + 60) / 60) * (chHeight / 2) * 0.95;
+            };
+            
+            const yTop = yCenter - mapDB(dbMax);
+            const yBottom = yCenter + mapDB(dbMin);
+            ctx.fillRect(pixel, yTop, 1 * dpr, Math.max(1 * dpr, yBottom - yTop));
+          } else {
+            const yTop = yCenter - (maxVal * (chHeight / 2) * 0.95);
+            const yBottom = yCenter - (minVal * (chHeight / 2) * 0.95);
+            ctx.fillRect(pixel, yTop, 1 * dpr, Math.max(1 * dpr, yBottom - yTop));
+          }
+        }
+      }
+    }
+
+    function drawAnalyzerTicks() {
+      const ticksCanvas = document.getElementById("analyzerTimeTicks");
+      if (!ticksCanvas || !decodedAudioBuffer) return;
+      
+      const ctx = ticksCanvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const w = ticksCanvas.width;
+      const h = ticksCanvas.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const duration = decodedAudioBuffer.duration;
+      
+      let tickInterval = 1.0;
+      if (analyzerPixelsPerSecond >= 400) tickInterval = 0.1;
+      else if (analyzerPixelsPerSecond >= 200) tickInterval = 0.2;
+      else if (analyzerPixelsPerSecond >= 100) tickInterval = 0.5;
+      else if (analyzerPixelsPerSecond >= 50) tickInterval = 1.0;
+      else tickInterval = 2.0;
+      
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = `${9 * dpr}px JetBrains Mono, monospace`;
+      ctx.lineWidth = 1 * dpr;
+      
+      const totalTicks = Math.ceil(duration / tickInterval);
+      
+      for (let i = 0; i <= totalTicks; i++) {
+        const sec = i * tickInterval;
+        const x = sec * analyzerPixelsPerSecond * dpr;
+        
+        if (x > w) break;
+        
+        // Draw minor division ticks
+        if (tickInterval >= 0.5) {
+          const subInterval = tickInterval / 5;
+          for (let j = 1; j < 5; j++) {
+            const subX = (sec + j * subInterval) * analyzerPixelsPerSecond * dpr;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+            ctx.beginPath();
+            ctx.moveTo(subX, h - 5 * dpr);
+            ctx.lineTo(subX, h);
+            ctx.stroke();
+          }
+        }
+        
+        // Draw major division ticks
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.beginPath();
+        ctx.moveTo(x, h - 10 * dpr);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+        
+        let label = "";
+        if (tickInterval < 1.0) {
+          label = sec.toFixed(1) + "s";
+        } else {
+          const m = Math.floor(sec / 60);
+          const s = Math.floor(sec % 60);
+          label = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
+        }
+        
+        ctx.fillText(label, x + 3 * dpr, h - 12 * dpr);
+      }
+    }
+
+    function startPlayheadLoop() {
+      stopPlayheadLoop();
+      
+      function tick() {
+        updatePlayheadPosition();
+        analyzerPlayheadRafId = requestAnimationFrame(tick);
+      }
+      
+      analyzerPlayheadRafId = requestAnimationFrame(tick);
+    }
+
+    function stopPlayheadLoop() {
+      if (analyzerPlayheadRafId) {
+        cancelAnimationFrame(analyzerPlayheadRafId);
+        analyzerPlayheadRafId = null;
+      }
+    }
+
+    function updatePlayheadPosition() {
+      const audio = document.getElementById("analyzerAudio");
+      if (!audio || !decodedAudioBuffer) return;
+      
+      const cur = audio.currentTime;
+      document.getElementById("analyzerCurrentTime").textContent = formatDurationMs(cur);
+      
+      const x = cur * analyzerPixelsPerSecond;
+      const playhead = document.getElementById("analyzerPlayhead");
+      if (playhead) {
+        playhead.style.left = `${x}px`;
+      }
+      
+      const follow = document.getElementById("analyzerFollowPlayhead").checked;
+      if (follow && !audio.paused) {
+        const container = document.getElementById("waveformScrollContainer");
+        if (container) {
+          const halfWidth = container.clientWidth / 2;
+          container.scrollLeft = x - halfWidth;
+        }
+      }
+    }
+
+    function formatDurationMs(seconds) {
+      if (isNaN(seconds)) return "00:00.000";
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 1000);
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     }
 
     // Startup Initializations
