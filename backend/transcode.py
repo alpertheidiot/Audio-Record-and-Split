@@ -210,6 +210,36 @@ class TranscodeQueue:
             with self.lock:
                 self.status[filename] = 'done'
                 
+            # Auto-identify if enabled
+            try:
+                from backend.config import load_config
+                config = load_config()
+                if config.acoustid_enabled:
+                    logger.info(f"Auto-identifying transcoded file: {out_path}")
+                    from backend.acoustid import identify_file
+                    ident_res = identify_file(
+                        filepath=str(out_path),
+                        api_key=config.acoustid_api_key,
+                        confidence_threshold=config.acoustid_confidence_threshold
+                    )
+                    if ident_res:
+                        logger.info(f"Auto-identification succeeded: {ident_res['artist']} - {ident_res['title']}")
+                        from backend.audio import status_queue, audio_engine
+                        status_queue.put({
+                            "state": audio_engine.state,
+                            "level_db": -90.0,
+                            "peak_db": -90.0,
+                            "elapsed_ms": 0,
+                            "silence_ms": 0,
+                            "identified": True,
+                            "original_name": filename,
+                            "new_name": Path(ident_res["new_path"]).stem,
+                            "artist": ident_res["artist"],
+                            "title": ident_res["title"]
+                        })
+            except Exception as ident_err:
+                logger.error(f"Error during auto-identification for {filename}: {ident_err}", exc_info=True)
+                
         except subprocess.CalledProcessError as e:
             logger.error(f"ffmpeg failed for {filename}. Exit code: {e.returncode}. Stderr: {e.stderr}")
             with self.lock:

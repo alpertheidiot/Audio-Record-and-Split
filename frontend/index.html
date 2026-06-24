@@ -67,12 +67,17 @@
       gap: 2rem;
     }
 
+    .dashboard-top-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
     @media (min-width: 900px) {
-      .container {
-        grid-template-columns: 7fr 5fr;
-      }
-      .header-area {
-        grid-column: span 2;
+      .dashboard-top-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        align-items: stretch;
       }
     }
 
@@ -532,7 +537,6 @@
 
     /* Recordings Area */
     .recordings-section {
-      grid-column: span 2;
     }
 
     .recordings-header {
@@ -1164,6 +1168,52 @@
     .scrollbar-custom::-webkit-scrollbar-thumb:hover {
       background: rgba(255, 255, 255, 0.2);
     }
+    .rec-cover-container {
+      width: 48px;
+      height: 48px;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+    .rec-cover-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .rec-cover-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: rgba(255, 255, 255, 0.3);
+    }
+    .quick-settings-panel {
+      transition: all var(--transition-normal);
+    }
+    .quick-settings-panel:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent-purple);
+      transform: translateY(-2px);
+    }
+    .format-badge-large {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa, #f43f5e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      border: 2px solid rgba(244, 63, 94, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      display: inline-block;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
   </style>
 </head>
 <body>
@@ -1185,21 +1235,22 @@
       </div>
     </header>
 
-    <!-- LEFT COLUMN: ENGINE STATUS & METERING -->
-    <main class="main-controls-panel">
-      
-      <!-- Control Panel -->
-      <section class="panel">
-        <h2 class="panel-title">Capture Engine</h2>
-        <div class="button-group" style="margin-bottom: 1.5rem;">
-          <button id="btnListen" class="btn btn-primary" onclick="toggleListening()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-            <span>Start Listening</span>
-          </button>
-          <button id="btnCalibrate" class="btn btn-secondary" onclick="runCalibration()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
-            <span>Calibrate Noise</span>
-          </button>
+    <!-- TOP ROW: Capture Engine & Output Settings -->
+    <div class="dashboard-top-row">
+      <!-- Capture Engine Card -->
+      <section class="panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="panel-title">Capture Engine</h2>
+          <div class="button-group" style="margin-bottom: 1.5rem;">
+            <button id="btnListen" class="btn btn-primary" onclick="toggleListening()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              <span>Start Listening</span>
+            </button>
+            <button id="btnCalibrate" class="btn btn-secondary" onclick="runCalibration()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+              <span>Calibrate Noise</span>
+            </button>
+          </div>
         </div>
         
         <!-- Live HUD metrics -->
@@ -1215,172 +1266,64 @@
         </div>
       </section>
 
-      <!-- Metering visualizers -->
-      <section class="panel" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
-        <h2 class="panel-title">Signal Monitor</h2>
-        
-        <!-- Horizontal level meter -->
-        <div class="meter-container">
-          <div class="meter-label-row">
-            <span>-90 dB</span>
-            <span>-60</span>
-            <span>-45</span>
-            <span>-30</span>
-            <span>-15</span>
-            <span>0 dB</span>
-          </div>
-          <div class="meter-bar-outer">
-            <div id="meterBar" class="meter-bar-fill"></div>
-            <!-- Threshold Markers -->
-            <div id="markerStart" class="meter-threshold-line line-start"></div>
-            <div id="markerStop" class="meter-threshold-line line-stop"></div>
+      <!-- Output / Quick Settings Card -->
+      <section class="panel quick-settings-panel" onclick="openSettingsModal()" style="cursor: pointer; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="panel-title" style="pointer-events: none; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
+            <span>Output Settings</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </h2>
+          <div style="display: flex; align-items: center; gap: 1.25rem; margin-top: 1.5rem; pointer-events: none;">
+            <div class="format-badge-large" id="lblQuickFormat">MP3</div>
+            <div style="display: flex; flex-direction: column;">
+              <span id="lblQuickBitrate" style="font-size: 1.15rem; font-weight: 600; color: #fff;">320 kbps</span>
+              <span id="lblQuickDetails" style="font-size: 0.85rem; color: var(--text-muted);">Stereo • 48 kHz</span>
+            </div>
           </div>
         </div>
-        
-        <!-- Rolling canvas history -->
-        <div class="canvas-container">
-          <canvas id="rollingChart"></canvas>
-        </div>
-        <!-- History Scrollbar -->
-        <div class="scrollbar-container" style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Past</span>
-          <input type="range" id="historyScroll" class="custom-progress-bar" min="0" max="0" value="0" style="flex: 1;" oninput="onHistoryScroll()">
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Live</span>
+        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; pointer-events: none;">
+          <span id="lblQuickDevice" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">Input: BlackHole 2ch</span>
+          <span style="color: var(--accent-purple); font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+            <span>Configure</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
         </div>
       </section>
+    </div>
+
+    <!-- MIDDLE ROW: Signal Monitor (Full Width) -->
+    <section class="panel" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <h2 class="panel-title">Signal Monitor</h2>
       
-    </main>
-
-    <!-- RIGHT COLUMN: CONFIGURATION -->
-    <aside class="panel">
-      <h2 class="panel-title">System Settings</h2>
-      <form id="configForm" class="config-form" onsubmit="saveConfigForm(event)">
-        
-        <!-- Devices selection -->
-        <div class="form-group">
-          <label for="input_device">Audio Input Device</label>
-          <select id="input_device" class="form-control"></select>
+      <!-- Horizontal level meter -->
+      <div class="meter-container">
+        <div class="meter-label-row">
+          <span>-90 dB</span>
+          <span>-60</span>
+          <span>-45</span>
+          <span>-30</span>
+          <span>-15</span>
+          <span>0 dB</span>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <div class="form-group">
-            <label for="sample_rate">Sample Rate</label>
-            <select id="sample_rate" class="form-control">
-              <option value="44100">44,100 Hz</option>
-              <option value="48000">48,000 Hz</option>
-              <option value="96000">96,000 Hz</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="channels">Channels</label>
-            <select id="channels" class="form-control">
-              <option value="1">Mono (1 ch)</option>
-              <option value="2">Stereo (2 ch)</option>
-            </select>
-          </div>
+        <div class="meter-bar-outer">
+          <div id="meterBar" class="meter-bar-fill"></div>
+          <!-- Threshold Markers -->
+          <div id="markerStart" class="meter-threshold-line line-start"></div>
+          <div id="markerStop" class="meter-threshold-line line-stop"></div>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
-          <div class="form-group">
-            <label for="output_format">Output Format</label>
-            <select id="output_format" class="form-control" onchange="toggleBitrateField()">
-              <option value="mp3">MP3 Lossy</option>
-              <option value="flac">FLAC Lossless</option>
-              <option value="aac">AAC (M4A)</option>
-              <option value="wav">WAV Master Only</option>
-            </select>
-          </div>
-          <div id="bitrateGroup" class="form-group">
-            <label for="output_bitrate">Bitrate</label>
-            <select id="output_bitrate" class="form-control">
-              <option value="128k">128 kbps</option>
-              <option value="192k">192 kbps</option>
-              <option value="256k">256 kbps</option>
-              <option value="320k">320 kbps</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Options</label>
-          <div class="switch-container">
-            <span style="font-size: 0.9rem; color: var(--text-muted);">Keep Lossless WAV Master</span>
-            <label class="switch">
-              <input type="checkbox" id="keep_wav_master">
-              <span class="switch-slider"></span>
-            </label>
-          </div>
-          <div id="aacVbrGroup" class="switch-container" style="margin-top: 0.75rem; display: none;">
-            <span style="font-size: 0.9rem; color: var(--text-muted);">AAC Variable Bitrate (VBR)</span>
-            <label class="switch">
-              <input type="checkbox" id="aac_vbr" onchange="toggleAacVbr()">
-              <span class="switch-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- DSP Gating Settings -->
-        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem;">
-          <div class="form-group">
-            <label for="start_threshold_db">Start Threshold <span id="lblStartThreshold">-45.0 dB</span></label>
-            <div class="slider-container">
-              <input type="range" id="start_threshold_db" class="slider-input" min="-80" max="-10" step="0.5" oninput="updateSliders()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="stop_threshold_db">Stop Threshold <span id="lblStopThreshold">-50.0 dB</span></label>
-            <div class="slider-container">
-              <input type="range" id="stop_threshold_db" class="slider-input slider-input-stop" min="-85" max="-15" step="0.5" oninput="updateSliders()">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label for="silence_stop_ms">Stop Silence (ms)</label>
-              <input type="number" id="silence_stop_ms" class="form-control" min="50" max="10000" step="50">
-            </div>
-            <div class="form-group">
-              <label for="start_debounce_ms">Debounce (ms)</label>
-              <input type="number" id="start_debounce_ms" class="form-control" min="50" max="1000" step="50">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label for="preroll_ms">Pre-Roll (ms)</label>
-              <input type="number" id="preroll_ms" class="form-control" min="0" max="2000" step="100">
-            </div>
-            <div class="form-group">
-              <label for="tail_keep_ms">Tail Retain (ms)</label>
-              <input type="number" id="tail_keep_ms" class="form-control" min="0" max="1000" step="50">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label for="min_recording_ms">Min Duration (ms)</label>
-              <input type="number" id="min_recording_ms" class="form-control" min="500" max="10000" step="100">
-            </div>
-            <div class="form-group">
-              <label for="max_recording_ms">Max Duration (ms)</label>
-              <input type="number" id="max_recording_ms" class="form-control" min="10000" max="3600000" step="10000">
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
-          <label for="output_dir">Output Directory</label>
-          <input type="text" id="output_dir" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="filename_pattern">Naming Pattern</label>
-          <input type="text" id="filename_pattern" class="form-control">
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Configuration</button>
-      </form>
-    </aside>
+      </div>
+      
+      <!-- Rolling canvas history -->
+      <div class="canvas-container">
+        <canvas id="rollingChart"></canvas>
+      </div>
+      <!-- History Scrollbar -->
+      <div class="scrollbar-container" style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Past</span>
+        <input type="range" id="historyScroll" class="custom-progress-bar" min="0" max="0" value="0" style="flex: 1;" oninput="onHistoryScroll()">
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Live</span>
+      </div>
+    </section>
 
     <!-- BOTTOM ROW: RECORDINGS -->
     <section class="panel recordings-section">
@@ -1406,6 +1349,173 @@
       <span>Stop Services</span>
     </button>
   </footer>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content panel" style="max-width: 520px; width: 90%; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem 1.75rem;">
+      <div class="modal-header" style="padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <h2 style="font-size: 1.4rem; background: linear-gradient(to right, #ffffff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; margin: 0;">System Settings</h2>
+        <button class="icon-btn icon-btn-delete" title="Close Settings" onclick="closeSettingsModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body scrollbar-custom" style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-top: 0.5rem;">
+        <form id="configForm" class="config-form" onsubmit="saveConfigForm(event)" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          
+          <!-- Devices selection -->
+          <div class="form-group">
+            <label for="input_device">Audio Input Device</label>
+            <select id="input_device" class="form-control"></select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="sample_rate">Sample Rate</label>
+              <select id="sample_rate" class="form-control">
+                <option value="44100">44,100 Hz</option>
+                <option value="48000">48,000 Hz</option>
+                <option value="96000">96,000 Hz</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="channels">Channels</label>
+              <select id="channels" class="form-control">
+                <option value="1">Mono (1 ch)</option>
+                <option value="2">Stereo (2 ch)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+            <div class="form-group">
+              <label for="output_format">Output Format</label>
+              <select id="output_format" class="form-control" onchange="toggleBitrateField()">
+                <option value="mp3">MP3 Lossy</option>
+                <option value="flac">FLAC Lossless</option>
+                <option value="aac">AAC (M4A)</option>
+                <option value="wav">WAV Master Only</option>
+              </select>
+            </div>
+            <div id="bitrateGroup" class="form-group">
+              <label for="output_bitrate">Bitrate</label>
+              <select id="output_bitrate" class="form-control">
+                <option value="128k">128 kbps</option>
+                <option value="192k">192 kbps</option>
+                <option value="256k">256 kbps</option>
+                <option value="320k">320 kbps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Options</label>
+            <div class="switch-container">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Keep Lossless WAV Master</span>
+              <label class="switch">
+                <input type="checkbox" id="keep_wav_master">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div id="aacVbrGroup" class="switch-container" style="margin-top: 0.75rem; display: none;">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">AAC Variable Bitrate (VBR)</span>
+              <label class="switch">
+                <input type="checkbox" id="aac_vbr" onchange="toggleAacVbr()">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- DSP Gating Settings -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem;">
+            <div class="form-group">
+              <label for="start_threshold_db">Start Threshold <span id="lblStartThreshold">-45.0 dB</span></label>
+              <div class="slider-container">
+                <input type="range" id="start_threshold_db" class="slider-input" min="-80" max="-10" step="0.5" oninput="updateSliders()">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="stop_threshold_db">Stop Threshold <span id="lblStopThreshold">-50.0 dB</span></label>
+              <div class="slider-container">
+                <input type="range" id="stop_threshold_db" class="slider-input slider-input-stop" min="-85" max="-15" step="0.5" oninput="updateSliders()">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="silence_stop_ms">Stop Silence (ms)</label>
+                <input type="number" id="silence_stop_ms" class="form-control" min="50" max="10000" step="50">
+              </div>
+              <div class="form-group">
+                <label for="start_debounce_ms">Debounce (ms)</label>
+                <input type="number" id="start_debounce_ms" class="form-control" min="50" max="1000" step="50">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="preroll_ms">Pre-Roll (ms)</label>
+                <input type="number" id="preroll_ms" class="form-control" min="0" max="2000" step="100">
+              </div>
+              <div class="form-group">
+                <label for="tail_keep_ms">Tail Retain (ms)</label>
+                <input type="number" id="tail_keep_ms" class="form-control" min="0" max="1000" step="50">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="min_recording_ms">Min Duration (ms)</label>
+                <input type="number" id="min_recording_ms" class="form-control" min="500" max="10000" step="100">
+              </div>
+              <div class="form-group">
+                <label for="max_recording_ms">Max Duration (ms)</label>
+                <input type="number" id="max_recording_ms" class="form-control" min="10000" max="3600000" step="10000">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+            <label for="output_dir">Output Directory</label>
+            <input type="text" id="output_dir" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="filename_pattern">Naming Pattern</label>
+            <input type="text" id="filename_pattern" class="form-control">
+          </div>
+
+          <!-- AcoustID Settings -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; display: flex; flex-direction: column; gap: 1.25rem;">
+            <h3 style="font-size: 1rem; color: #fff; margin-bottom: -0.25rem; font-weight: 600;">AcoustID Identification</h3>
+            
+            <div class="form-group">
+              <div class="switch-container">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">Auto-Identify on Save</span>
+                <label class="switch">
+                  <input type="checkbox" id="acoustid_enabled">
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="acoustid_api_key">AcoustID API Key</label>
+              <input type="text" id="acoustid_api_key" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label for="acoustid_confidence_threshold">Confidence Threshold <span id="lblAcoustidConfidence">0.50</span></label>
+              <div class="slider-container">
+                <input type="range" id="acoustid_confidence_threshold" class="slider-input" min="0.1" max="1.0" step="0.05" oninput="updateAcoustidConfidenceLabel()">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top: 1rem; width: 100%;">Save Configuration</button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <div id="analyzerModal" class="modal-overlay">
     <div class="modal-content panel">
@@ -1590,6 +1700,10 @@
         return;
       } else if (data.conversion_failed) {
         showToast(`Conversion failed for: ${data.filename}`, "error");
+        return;
+      } else if (data.identified) {
+        showToast(`Auto-identified: ${data.artist} - ${data.title}`, "success");
+        fetchRecordings();
         return;
       }
 
@@ -1894,6 +2008,29 @@
         document.getElementById("max_recording_ms").value = config.max_recording_ms;
         document.getElementById("output_dir").value = config.output_dir;
         document.getElementById("filename_pattern").value = config.filename_pattern;
+        document.getElementById("acoustid_confidence_threshold").value = config.acoustid_confidence_threshold;
+        updateAcoustidConfidenceLabel();
+
+        // Update Quick Settings card fields
+        document.getElementById("lblQuickFormat").textContent = config.output_format.toUpperCase();
+        
+        let bitrateText = "";
+        if (config.output_format === "flac") {
+          bitrateText = "Lossless";
+        } else if (config.output_format === "wav") {
+          bitrateText = "24-bit WAV";
+        } else if (config.output_format === "aac" && config.aac_vbr) {
+          bitrateText = "VBR (Max Quality)";
+        } else {
+          bitrateText = config.output_bitrate.replace('k', ' kbps');
+        }
+        document.getElementById("lblQuickBitrate").textContent = bitrateText;
+        
+        const rateK = (config.sample_rate / 1000).toFixed(1).replace('.0', '');
+        const channelText = config.channels === 1 ? "Mono" : "Stereo";
+        document.getElementById("lblQuickDetails").textContent = `${channelText} • ${rateK} kHz`;
+        
+        document.getElementById("lblQuickDevice").textContent = `Input: ${config.input_device}`;
 
         // Apply sliders
         startThreshold = config.start_threshold_db;
@@ -1968,7 +2105,10 @@
         min_recording_ms: parseInt(document.getElementById("min_recording_ms").value),
         max_recording_ms: parseInt(document.getElementById("max_recording_ms").value),
         output_dir: document.getElementById("output_dir").value,
-        filename_pattern: document.getElementById("filename_pattern").value
+        filename_pattern: document.getElementById("filename_pattern").value,
+        acoustid_enabled: document.getElementById("acoustid_enabled").checked,
+        acoustid_api_key: document.getElementById("acoustid_api_key").value,
+        acoustid_confidence_threshold: parseFloat(document.getElementById("acoustid_confidence_threshold").value)
       };
 
       try {
@@ -1981,6 +2121,7 @@
         if (response.ok) {
           showToast("Configuration saved successfully.", "success");
           fetchConfig();
+          closeSettingsModal();
         } else {
           const err = await response.json();
           showToast(`Save failed: ${err.detail || "Validation Error"}`, "error");
@@ -2012,21 +2153,39 @@
           
           card.innerHTML = `
             <div class="rec-top-row">
-              <div class="rec-meta">
-                <div class="rec-title-row">
-                  <span class="rec-name" title="${rec.name}">${rec.name}</span>
-                  <span class="rec-badge badge-${rec.format}">${rec.format}</span>
-                  <span class="rec-badge badge-bitrate">${rec.bitrate_kbps} kbps</span>
+              <div class="rec-info-block" style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 280px;">
+                <div class="rec-cover-container">
+                  ${rec.has_cover_art 
+                    ? `<img src="/api/recordings/${encodeURIComponent(filename)}/coverart" class="rec-cover-art" alt="Cover Art">`
+                    : `<div class="rec-cover-placeholder">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                       </div>`
+                  }
                 </div>
-                <div class="rec-info-row">
-                  <span>${rec.created_at}</span>
-                  <span>•</span>
-                  <span>${formatPlayTime(rec.duration_ms / 1000)}</span>
-                  <span>•</span>
-                  <span>${formatBytes(rec.size_bytes)}</span>
+                <div class="rec-meta" style="flex: 1; min-width: 0;">
+                  <div class="rec-title-row" style="flex-wrap: wrap; gap: 0.5rem;">
+                    <span class="rec-name" style="max-width: 100%;" title="${rec.artist && rec.title ? `${rec.artist} - ${rec.title}` : rec.name}">
+                      ${rec.artist && rec.title 
+                        ? `<span style="background: linear-gradient(to right, #a78bfa, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">${rec.artist}</span> - ${rec.title}`
+                        : rec.name
+                      }
+                    </span>
+                    <span class="rec-badge badge-${rec.format}">${rec.format}</span>
+                    <span class="rec-badge badge-bitrate">${rec.bitrate_kbps} kbps</span>
+                  </div>
+                  <div class="rec-info-row">
+                    <span>${rec.created_at}</span>
+                    <span>•</span>
+                    <span>${formatPlayTime(rec.duration_ms / 1000)}</span>
+                    <span>•</span>
+                    <span>${formatBytes(rec.size_bytes)}</span>
+                  </div>
                 </div>
               </div>
               <div class="rec-actions">
+                <button class="icon-btn icon-btn-identify" id="ident-btn-${id}" title="Identify Track" onclick="identifyTrack('${filename}')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </button>
                 <button class="icon-btn icon-btn-analyze" title="Analyze Track" onclick="openAnalyzer('${filename}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h1m8-9v18m8-9h1m-12-6v12m8-8v4"/></svg>
                 </button>
@@ -2090,6 +2249,53 @@
       } catch (err) {
         console.error(err);
         showToast("Error calling delete endpoint.", "error");
+      }
+    }
+
+    function openSettingsModal() {
+      document.getElementById("settingsModal").classList.add("active");
+    }
+
+    function closeSettingsModal() {
+      document.getElementById("settingsModal").classList.remove("active");
+    }
+
+    function updateAcoustidConfidenceLabel() {
+      const val = parseFloat(document.getElementById("acoustid_confidence_threshold").value);
+      document.getElementById("lblAcoustidConfidence").textContent = val.toFixed(2);
+    }
+
+    async function identifyTrack(filename) {
+      const id = filename.replace('.', '-');
+      const btn = document.getElementById(`ident-btn-${id}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+      }
+      
+      showToast("Searching AcoustID database...", "info");
+      
+      try {
+        const response = await fetch(`/api/recordings/${encodeURIComponent(filename)}/identify`, {
+          method: "POST"
+        });
+        
+        if (response.ok) {
+          const res = await response.json();
+          showToast(`Identified: ${res.artist} - ${res.title}`, "success");
+          fetchRecordings();
+        } else {
+          const err = await response.json();
+          showToast(`Identification failed: ${err.detail || "No match found"}`, "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error during AcoustID identification.", "error");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
       }
     }
 

@@ -4,3 +4,5 @@ sounddevice
 soundfile
 numpy
 pydantic
+mutagen
+Pillow

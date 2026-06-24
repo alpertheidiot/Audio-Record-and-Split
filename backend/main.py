@@ -241,6 +241,56 @@ def list_recordings():
             # Read duration and bitrate
             info = _get_audio_info_ffprobe(entry)
             
+            # Read metadata tags using mutagen
+            artist = None
+            title = None
+            album = None
+            has_cover_art = False
+            
+            try:
+                from mutagen import File as MutagenFile
+                audio_tags = MutagenFile(entry)
+                if audio_tags:
+                    if entry.suffix.lower() == ".mp3":
+                        if "TPE1" in audio_tags:
+                            artist = str(audio_tags["TPE1"])
+                        if "TIT2" in audio_tags:
+                            title = str(audio_tags["TIT2"])
+                        if "TALB" in audio_tags:
+                            album = str(audio_tags["TALB"])
+                        from mutagen.id3 import APIC
+                        for tag in audio_tags.values():
+                            if isinstance(tag, APIC):
+                                has_cover_art = True
+                                break
+                    elif entry.suffix.lower() == ".flac":
+                        artist = audio_tags.get("artist", [None])[0]
+                        title = audio_tags.get("title", [None])[0]
+                        album = audio_tags.get("album", [None])[0]
+                        if audio_tags.pictures:
+                            has_cover_art = True
+                    elif entry.suffix.lower() in [".m4a", ".mp4"]:
+                        artist = audio_tags.get('\xa9ART', [None])[0]
+                        title = audio_tags.get('\xa9nam', [None])[0]
+                        album = audio_tags.get('\xa9alb', [None])[0]
+                        if "covr" in audio_tags:
+                            has_cover_art = True
+                    elif entry.suffix.lower() == ".wav":
+                        if hasattr(audio_tags, "tags") and audio_tags.tags:
+                            if "TPE1" in audio_tags.tags:
+                                artist = str(audio_tags.tags["TPE1"])
+                            if "TIT2" in audio_tags.tags:
+                                title = str(audio_tags.tags["TIT2"])
+                            if "TALB" in audio_tags.tags:
+                                album = str(audio_tags.tags["TALB"])
+                            from mutagen.id3 import APIC
+                            for tag in audio_tags.tags.values():
+                                if isinstance(tag, APIC):
+                                    has_cover_art = True
+                                    break
+            except Exception as tag_err:
+                logger.debug(f"Failed to read tags for {entry.name}: {tag_err}")
+                
             recordings.append({
                 "name": stem,
                 "path": str(entry),
@@ -249,7 +299,11 @@ def list_recordings():
                 "created_at": created_str,
                 "format": ext,
                 "peak_db": 0.0,
-                "bitrate_kbps": info["bitrate_kbps"]
+                "bitrate_kbps": info["bitrate_kbps"],
+                "artist": artist,
+                "title": title,
+                "album": album,
+                "has_cover_art": has_cover_art
             })
         
     # Sort by created time descending
@@ -288,6 +342,99 @@ def delete_recording(filename: str):
             raise HTTPException(status_code=500, detail=f"Failed to delete file: {e}")
     else:
         raise HTTPException(status_code=404, detail="File not found")
+
+@app.post("/api/recordings/{filename}/identify")
+def identify_recording(filename: str):
+    """Run AcoustID identification on the specified file."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
+        
+    filepath = out_dir / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    from backend.acoustid import identify_file
+    try:
+        result = identify_file(
+            filepath=str(filepath),
+            api_key=config.acoustid_api_key,
+            confidence_threshold=config.acoustid_confidence_threshold
+        )
+        if result:
+            return {
+                "status": "success",
+                "message": "Track identified successfully",
+                "artist": result["artist"],
+                "title": result["title"],
+                "new_filename": Path(result["new_path"]).name
+            }
+        else:
+            raise HTTPException(status_code=404, detail="No matches found with sufficient confidence")
+    except Exception as e:
+        logger.error(f"Manual identification failed for {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/recordings/{filename}/coverart")
+def get_coverart(filename: str):
+    """Serve the cover art embedded in the audio file."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
+        
+    filepath = out_dir / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    ext = filepath.suffix.lower()
+    cover_data = None
+    mime = "image/jpeg"
+    
+    try:
+        if ext == ".mp3":
+            from mutagen.mp3 import MP3
+            from mutagen.id3 import APIC
+            audio = MP3(filepath)
+            if audio.tags:
+                for tag in audio.tags.values():
+                    if isinstance(tag, APIC):
+                        cover_data = tag.data
+                        mime = tag.mime
+                        break
+        elif ext == ".flac":
+            from mutagen.flac import FLAC
+            audio = FLAC(filepath)
+            if audio.pictures:
+                cover_data = audio.pictures[0].data
+                mime = audio.pictures[0].mime
+        elif ext in [".m4a", ".mp4"]:
+            from mutagen.mp4 import MP4, MP4Cover
+            audio = MP4(filepath)
+            if "covr" in audio:
+                covr = audio["covr"][0]
+                cover_data = bytes(covr)
+                if getattr(covr, 'imageformat', None) == MP4Cover.FORMAT_PNG:
+                    mime = "image/png"
+        elif ext == ".wav":
+            from mutagen.wave import WAVE
+            from mutagen.id3 import APIC
+            audio = WAVE(filepath)
+            if audio.tags:
+                for tag in audio.tags.values():
+                    if isinstance(tag, APIC):
+                        cover_data = tag.data
+                        mime = tag.mime
+                        break
+    except Exception as e:
+        logger.error(f"Error reading cover art from {filename}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to read cover art from file")
+        
+    if not cover_data:
+        raise HTTPException(status_code=404, detail="No cover art found in this file")
+        
+    return Response(content=cover_data, media_type=mime)
 
 def _run_ffmpeg_convert(cmd: List[str], target_filename: str):
     try:
