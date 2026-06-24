@@ -7,7 +7,7 @@
   "stop_threshold_db": -85.0,
   "silence_stop_ms": 300,
   "start_debounce_ms": 150,
-  "preroll_ms": 500,
+  "preroll_ms": 1000,
   "tail_keep_ms": 1000,
   "min_recording_ms": 10000,
   "max_recording_ms": 900000,
