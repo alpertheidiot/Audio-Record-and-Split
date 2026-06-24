@@ -162,7 +162,7 @@ def fetch_cover_art(mbid: str) -> Optional[bytes]:
         return None
 
 def resize_image(img_bytes: bytes) -> Optional[bytes]:
-    """Crop and resize the cover image to square dimensions between 600x600 and 1000x1000."""
+    """Crop and resize the cover image to square dimensions between 600x600 and 800x800."""
     if not img_bytes:
         return None
     try:
@@ -181,19 +181,19 @@ def resize_image(img_bytes: bytes) -> Optional[bytes]:
             bottom = (height + min_dim) / 2
             img = img.crop((left, top, right, bottom))
             
-        # Target sizing range: [600, 1000]
+        # Target sizing range: [600, 800]
         size = img.width
-        if size < 600:
+        if size > 800:
+            size = 800
+        elif size < 600:
             size = 600
-        elif size > 1000:
-            size = 1000
             
         if size != img.width:
             logger.info(f"Resizing cover art from {img.width}x{img.height} to {size}x{size}")
             img = img.resize((size, size), Image.Resampling.LANCZOS)
             
         out_io = io.BytesIO()
-        img.save(out_io, format="JPEG", quality=85)
+        img.save(out_io, format="JPEG", quality=90)
         return out_io.getvalue()
     except Exception as e:
         logger.error(f"Error processing/resizing image: {e}")
