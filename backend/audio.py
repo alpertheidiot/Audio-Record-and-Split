@@ -359,7 +359,6 @@ class AudioEngine:
                     self.state = "recording"
                     # Prepopulate buffer with the pre-roll history
                     self.recording_buffer = list(self.preroll_ring)
-                    self.recording_buffer.append(block)
                     
                     self.silence_ms = 0.0
                     self.elapsed_ms = len(self.recording_buffer) * block_ms
