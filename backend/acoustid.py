@@ -28,6 +28,42 @@ def get_fingerprint(filepath: str) -> Tuple[int, str]:
     # duration might be float, convert to int seconds
     return int(float(data["duration"])), data["fingerprint"]
 
+def fetch_musicbrainz_metadata(recording_mbid: str) -> Optional[dict]:
+    """Queries MusicBrainz API for detailed recording metadata using Recording MBID."""
+    if not recording_mbid:
+        return None
+    url = f"https://musicbrainz.org/ws/2/recording/{recording_mbid}?fmt=json&inc=artists+releases"
+    try:
+        req = urllib.request.Request(url)
+        req.add_header("User-Agent", "SilenceCut/1.0 ( alper@example.com )")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            
+        title = data.get("title")
+        artist_credits = data.get("artist-credit", [])
+        artist_name = ", ".join([ac.get("artist", {}).get("name", "") for ac in artist_credits if ac.get("artist")]) if artist_credits else None
+        
+        # Get first release details
+        release_mbid = None
+        album_title = None
+        releases = data.get("releases", [])
+        if releases:
+            for r in releases:
+                if r.get("id"):
+                    release_mbid = r.get("id")
+                    album_title = r.get("title")
+                    break
+                    
+        return {
+            "title": title,
+            "artist": artist_name,
+            "album": album_title,
+            "release_mbid": release_mbid
+        }
+    except Exception as e:
+        logger.error(f"Error fetching metadata from MusicBrainz for MBID {recording_mbid}: {e}")
+        return None
+
 def lookup_acoustid(duration: int, fingerprint: str, api_key: str, confidence_threshold: float) -> Optional[dict]:
     """Queries the AcoustID API for track matching data."""
     if not api_key:
@@ -78,11 +114,11 @@ def lookup_acoustid(duration: int, fingerprint: str, api_key: str, confidence_th
             
         # Return the first recording details
         recording = recordings[0]
+        rec_mbid = recording.get("id")
         title = recording.get("title")
         artists = recording.get("artists", [])
-        artist_name = ", ".join([a.get("name", "") for a in artists if a.get("name")]) if artists else "Unknown Artist"
+        artist_name = ", ".join([a.get("name", "") for a in artists if a.get("name")]) if artists else ""
         
-        # Get MBID of the first release to fetch cover art later
         release_mbid = None
         album_title = None
         releases = recording.get("releases", [])
@@ -93,6 +129,19 @@ def lookup_acoustid(duration: int, fingerprint: str, api_key: str, confidence_th
                     album_title = r.get("title")
                     break
                     
+        # Fallback to MusicBrainz if metadata is missing or unknown
+        if (not title or not artist_name) and rec_mbid:
+            logger.info(f"Metadata missing in AcoustID for recording {rec_mbid}. Fetching from MusicBrainz...")
+            mb_meta = fetch_musicbrainz_metadata(rec_mbid)
+            if mb_meta:
+                title = mb_meta.get("title") or title
+                artist_name = mb_meta.get("artist") or artist_name
+                album_title = mb_meta.get("album") or album_title
+                release_mbid = mb_meta.get("release_mbid") or release_mbid
+                
+        title = title or "Unknown Title"
+        artist_name = artist_name or "Unknown Artist"
+        
         return {
             "title": title,
             "artist": artist_name,
@@ -374,9 +423,10 @@ def lookup_acoustid_candidates(duration: int, fingerprint: str, api_key: str) ->
         score = result.get("score", 0.0)
         recordings = result.get("recordings", [])
         for recording in recordings:
-            title = recording.get("title") or "Unknown Title"
+            rec_mbid = recording.get("id")
+            title = recording.get("title")
             artists = recording.get("artists", [])
-            artist_name = ", ".join([a.get("name", "") for a in artists if a.get("name")]) if artists else "Unknown Artist"
+            artist_name = ", ".join([a.get("name", "") for a in artists if a.get("name")]) if artists else ""
             
             # Get release details
             release_mbid = None
@@ -388,6 +438,19 @@ def lookup_acoustid_candidates(duration: int, fingerprint: str, api_key: str) ->
                         release_mbid = r.get("id")
                         album_title = r.get("title")
                         break
+                        
+            # Fallback to MusicBrainz if metadata is missing or unknown
+            if (not title or not artist_name) and rec_mbid:
+                logger.info(f"Metadata missing in AcoustID for recording candidate {rec_mbid}. Fetching from MusicBrainz...")
+                mb_meta = fetch_musicbrainz_metadata(rec_mbid)
+                if mb_meta:
+                    title = mb_meta.get("title") or title
+                    artist_name = mb_meta.get("artist") or artist_name
+                    album_title = mb_meta.get("album") or album_title
+                    release_mbid = mb_meta.get("release_mbid") or release_mbid
+                    
+            title = title or "Unknown Title"
+            artist_name = artist_name or "Unknown Artist"
             
             candidates.append({
                 "title": title,
