@@ -22,7 +22,7 @@ class AppConfig(BaseModel):
     keep_wav_master: bool = Field(default=True, description="Keep original lossless WAV master")
     output_dir: str = Field(default="./recordings", description="Output folder for files")
     filename_pattern: str = Field(default="{ts}", description="Filename template: {ts} (timestamp), {n} (index)")
-    acoustid_api_key: str = Field(default="IHx3QnxlfZ", description="AcoustID API Key")
+    acoustid_api_key: str = Field(default="", description="AcoustID API Key")
     acoustid_confidence_threshold: float = Field(default=0.5, description="AcoustID match confidence threshold")
     acoustid_enabled: bool = Field(default=False, description="Enable AcoustID automatic ID-ing of saved tracks")
 
@@ -89,6 +89,7 @@ class RecordingInfo(BaseModel):
     title: Optional[str] = None
     album: Optional[str] = None
     has_cover_art: bool = False
+    original_filename: Optional[str] = None
 
 class ConvertRequest(BaseModel):
     target_format: str

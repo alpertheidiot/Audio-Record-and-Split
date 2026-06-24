@@ -17,7 +17,7 @@
   "keep_wav_master": false,
   "output_dir": "./recordings",
   "filename_pattern": "{ts}",
-  "acoustid_api_key": "",
-  "acoustid_confidence_threshold": 0.3,
-  "acoustid_enabled": false
+  "acoustid_api_key": "ilU5OcWI5P",
+  "acoustid_confidence_threshold": 0.6,
+  "acoustid_enabled": true
 }

@@ -1517,6 +1517,40 @@
     </div>
   </div>
 
+  <!-- AcoustID Matches Modal -->
+  <div id="candidateModal" class="modal-overlay">
+    <div class="modal-content panel" style="max-width: 600px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem 1.75rem;">
+      <div class="modal-header" style="padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <h2 style="font-size: 1.4rem; background: linear-gradient(to right, #ffffff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; margin: 0;">AcoustID Matches</h2>
+        <button class="icon-btn icon-btn-delete" title="Close" onclick="closeCandidateModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body scrollbar-custom" style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+        <div id="candidateModalLoading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 0; gap: 1rem; color: var(--text-muted);">
+          <div class="spinner"></div>
+          <span>Querying AcoustID database...</span>
+        </div>
+        <div id="candidateModalResults" style="display: none; flex-direction: column; gap: 1.5rem;">
+          <!-- High confidence matches -->
+          <div id="highConfidenceSection">
+            <h3 style="font-size: 1rem; color: #a78bfa; margin-bottom: 0.75rem; font-weight: 600;">Recommended Matches</h3>
+            <div id="highConfidenceList" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+          </div>
+          <!-- Low confidence matches -->
+          <div id="lowConfidenceSection">
+            <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 0.75rem; font-weight: 600;">Other Potential Matches</h3>
+            <div id="lowConfidenceList" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+          </div>
+          <!-- No matches -->
+          <div id="noMatchesAlert" style="display: none; text-align: center; padding: 2rem 0; color: var(--text-muted);">
+            No matches found in the AcoustID database.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="analyzerModal" class="modal-overlay">
     <div class="modal-content panel">
       <div class="modal-header">
@@ -2009,6 +2043,8 @@
         document.getElementById("output_dir").value = config.output_dir;
         document.getElementById("filename_pattern").value = config.filename_pattern;
         document.getElementById("acoustid_confidence_threshold").value = config.acoustid_confidence_threshold;
+        document.getElementById("acoustid_enabled").checked = config.acoustid_enabled;
+        document.getElementById("acoustid_api_key").value = config.acoustid_api_key || "";
         updateAcoustidConfidenceLabel();
 
         // Update Quick Settings card fields
@@ -2162,7 +2198,7 @@
                        </div>`
                   }
                 </div>
-                <div class="rec-meta" style="flex: 1; min-width: 0;">
+                 <div class="rec-meta" style="flex: 1; min-width: 0;">
                   <div class="rec-title-row" style="flex-wrap: wrap; gap: 0.5rem;">
                     <span class="rec-name" style="max-width: 100%;" title="${rec.artist && rec.title ? `${rec.artist} - ${rec.title}` : rec.name}">
                       ${rec.artist && rec.title 
@@ -2180,12 +2216,25 @@
                     <span>•</span>
                     <span>${formatBytes(rec.size_bytes)}</span>
                   </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${filename}${rec.original_filename ? ` (Original: ${rec.original_filename})` : ''}">
+                    File: <span style="font-family: monospace;">${filename}</span>
+                    ${rec.original_filename 
+                      ? ` • Original: <span style="font-family: monospace;">${rec.original_filename}</span>` 
+                      : ''
+                    }
+                  </div>
                 </div>
               </div>
               <div class="rec-actions">
                 <button class="icon-btn icon-btn-identify" id="ident-btn-${id}" title="Identify Track" onclick="identifyTrack('${filename}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </button>
+                ${rec.original_filename 
+                  ? `<button class="icon-btn icon-btn-undo" title="Undo Identification" onclick="undoIdentify('${filename}')" style="color: #f43f5e;">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                     </button>`
+                  : ''
+                }
                 <button class="icon-btn icon-btn-analyze" title="Analyze Track" onclick="openAnalyzer('${filename}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h1m8-9v18m8-9h1m-12-6v12m8-8v4"/></svg>
                 </button>
@@ -2265,37 +2314,236 @@
       document.getElementById("lblAcoustidConfidence").textContent = val.toFixed(2);
     }
 
+    function openCandidateModal() {
+      document.getElementById("candidateModal").classList.add("active");
+    }
+
+    function closeCandidateModal() {
+      document.getElementById("candidateModal").classList.remove("active");
+    }
+
     async function identifyTrack(filename) {
-      const id = filename.replace('.', '-');
-      const btn = document.getElementById(`ident-btn-${id}`);
-      if (btn) {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-      }
-      
-      showToast("Searching AcoustID database...", "info");
+      // Show loading state
+      document.getElementById("candidateModalLoading").style.display = "flex";
+      document.getElementById("candidateModalResults").style.display = "none";
+      openCandidateModal();
       
       try {
-        const response = await fetch(`/api/recordings/${encodeURIComponent(filename)}/identify`, {
+        const response = await fetch(`/api/recordings/${encodeURIComponent(filename)}/identify-candidates`);
+        if (!response.ok) {
+          const err = await response.json();
+          showToast(`Search failed: ${err.detail || "Error"}`, "error");
+          closeCandidateModal();
+          return;
+        }
+        
+        const data = await response.json();
+        const highConf = data.high_confidence || [];
+        const lowConf = data.low_confidence || [];
+        
+        document.getElementById("candidateModalLoading").style.display = "none";
+        document.getElementById("candidateModalResults").style.display = "flex";
+        
+        const highList = document.getElementById("highConfidenceList");
+        const lowList = document.getElementById("lowConfidenceList");
+        const highSection = document.getElementById("highConfidenceSection");
+        const lowSection = document.getElementById("lowConfidenceSection");
+        const noMatches = document.getElementById("noMatchesAlert");
+        
+        highList.innerHTML = "";
+        lowList.innerHTML = "";
+        
+        if (highConf.length === 0 && lowConf.length === 0) {
+          highSection.style.display = "none";
+          lowSection.style.display = "none";
+          noMatches.style.display = "block";
+          return;
+        }
+        
+        noMatches.style.display = "none";
+        
+        if (highConf.length > 0) {
+          highSection.style.display = "block";
+          highConf.forEach(c => {
+            highList.appendChild(createCandidateElement(filename, c, true));
+          });
+        } else {
+          highSection.style.display = "none";
+        }
+        
+        if (lowConf.length > 0) {
+          lowSection.style.display = "block";
+          lowConf.forEach(c => {
+            lowList.appendChild(createCandidateElement(filename, c, false));
+          });
+        } else {
+          lowSection.style.display = "none";
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error retrieving candidates.", "error");
+        closeCandidateModal();
+      }
+    }
+
+    function createCandidateElement(filename, c, isHigh) {
+      const div = document.createElement("div");
+      div.className = "candidate-item";
+      div.style.cssText = "background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;";
+      
+      const badgeBg = isHigh ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)";
+      const badgeColor = isHigh ? "#22c55e" : "#eab308";
+      const scorePercent = Math.round(c.score * 100);
+      
+      const rand = Math.floor(Math.random() * 1000000);
+      const mbidClean = (c.release_mbid || 'none').replace(/[^a-zA-Z0-9]/g, '');
+      const coverId = `cand-cover-${mbidClean}-${rand}`;
+      const dimId = `cand-dims-${mbidClean}-${rand}`;
+      
+      div.innerHTML = `
+        <div id="${coverId}" class="rec-cover-placeholder" style="width: 50px; height: 50px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        </div>
+        <div style="min-width: 0; flex: 1;">
+          <div style="font-weight: 600; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            ${c.artist} - ${c.title}
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-top: 0.15rem;">
+            Album: ${c.album || 'Unknown Album'}
+          </div>
+          <div id="${dimId}" style="font-size: 0.7rem; color: #a78bfa; margin-top: 0.2rem; display: none; font-weight: 500;"></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;">
+          <span style="font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${badgeBg}; color: ${badgeColor};">
+            ${scorePercent}% Match
+          </span>
+          <button class="btn btn-primary btn-select-candidate" 
+                  data-filename="${encodeURIComponent(filename)}"
+                  data-artist="${encodeURIComponent(c.artist)}"
+                  data-title="${encodeURIComponent(c.title)}"
+                  data-album="${encodeURIComponent(c.album || '')}"
+                  data-mbid="${encodeURIComponent(c.release_mbid || '')}"
+                  style="padding: 0.35rem 0.75rem; font-size: 0.8rem; width: auto; margin-top: 0;">
+            Select
+          </button>
+        </div>
+      `;
+      
+      div.querySelector(".btn-select-candidate").onclick = function(e) {
+        const btn = e.currentTarget;
+        const fn = decodeURIComponent(btn.getAttribute("data-filename"));
+        const art = decodeURIComponent(btn.getAttribute("data-artist"));
+        const tit = decodeURIComponent(btn.getAttribute("data-title"));
+        const alb = decodeURIComponent(btn.getAttribute("data-album"));
+        const mb = decodeURIComponent(btn.getAttribute("data-mbid"));
+        applyCandidate(fn, art, tit, alb, mb);
+      };
+      
+      if (c.release_mbid) {
+        loadCandidateCover(c.release_mbid, coverId, dimId);
+      }
+      
+      return div;
+    }
+
+    async function loadCandidateCover(mbid, containerId, dimensionsId) {
+      if (!mbid) return;
+      try {
+        const res = await fetch(`https://coverartarchive.org/release/${mbid}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.images || data.images.length === 0) return;
+        
+        let imageUrl = null;
+        for (const img of data.images) {
+          if (img.front) {
+            imageUrl = img.thumbnails?.['250'] || img.image;
+            break;
+          }
+        }
+        if (!imageUrl) {
+          imageUrl = data.images[0].thumbnails?.['250'] || data.images[0].image;
+        }
+        if (!imageUrl) return;
+        
+        if (window.location.protocol === "https:") {
+          imageUrl = imageUrl.replace(/^http:/, "https:");
+        }
+        
+        const img = new Image();
+        img.src = imageUrl;
+        img.style.cssText = "width: 100%; height: 100%; object-fit: cover;";
+        img.onload = function() {
+          const container = document.getElementById(containerId);
+          if (container) {
+            container.innerHTML = "";
+            container.appendChild(img);
+          }
+          
+          const dimEl = document.getElementById(dimensionsId);
+          if (dimEl) {
+            dimEl.textContent = `Art: ${img.naturalWidth} × ${img.naturalHeight}px`;
+            dimEl.style.display = "block";
+          }
+        };
+      } catch (err) {
+        console.error("Failed to load candidate cover:", err);
+      }
+    }
+
+    async function applyCandidate(filename, artist, title, album, mbid) {
+      closeCandidateModal();
+      showToast("Applying metadata...", "info");
+      
+      try {
+        const response = await fetch(`/api/recordings/${encodeURIComponent(filename)}/apply-metadata`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            artist: artist,
+            title: title,
+            album: album || null,
+            release_mbid: mbid || null
+          })
+        });
+        
+        if (response.ok) {
+          showToast(`Successfully identified: ${artist} - ${title}`, "success");
+          fetchRecordings();
+        } else {
+          const err = await response.json();
+          showToast(`Apply failed: ${err.detail || "Error"}`, "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error applying candidate.", "error");
+      }
+    }
+
+    async function undoIdentify(filename) {
+      if (!confirm(`Are you sure you want to undo identification and revert this track back to its original name?`)) {
+        return;
+      }
+      
+      showToast("Undoing identification...", "info");
+      try {
+        const response = await fetch(`/api/recordings/${encodeURIComponent(filename)}/undo-identify`, {
           method: "POST"
         });
         
         if (response.ok) {
           const res = await response.json();
-          showToast(`Identified: ${res.artist} - ${res.title}`, "success");
+          showToast(`Reverted back to: ${res.original_filename}`, "success");
           fetchRecordings();
         } else {
           const err = await response.json();
-          showToast(`Identification failed: ${err.detail || "No match found"}`, "error");
+          showToast(`Undo failed: ${err.detail || "Error"}`, "error");
         }
       } catch (err) {
         console.error(err);
-        showToast("Error during AcoustID identification.", "error");
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.style.opacity = '1';
-        }
+        showToast("Error during undo process.", "error");
       }
     }
 

@@ -5,11 +5,11 @@ import logging
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional, Union
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse, FileResponse
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from backend.config import load_config, save_config, update_config
 from backend.models import AppConfig, DeviceInfo, RecordingInfo, ConvertRequest
@@ -230,6 +230,10 @@ def list_recordings():
     # We want to scan files that match our output extension formats
     extensions = [".wav", ".mp3", ".flac", ".m4a"]
     
+    # Load naming history
+    from backend.acoustid import load_naming_history
+    history = load_naming_history(out_dir)
+    
     for entry in out_dir.iterdir():
         if entry.is_file() and entry.suffix.lower() in extensions:
             stem = entry.stem
@@ -291,6 +295,10 @@ def list_recordings():
             except Exception as tag_err:
                 logger.debug(f"Failed to read tags for {entry.name}: {tag_err}")
                 
+            original_filename = None
+            if entry.name in history:
+                original_filename = history[entry.name]["original_name"]
+                
             recordings.append({
                 "name": stem,
                 "path": str(entry),
@@ -303,7 +311,8 @@ def list_recordings():
                 "artist": artist,
                 "title": title,
                 "album": album,
-                "has_cover_art": has_cover_art
+                "has_cover_art": has_cover_art,
+                "original_filename": original_filename
             })
         
     # Sort by created time descending
@@ -372,9 +381,109 @@ def identify_recording(filename: str):
             }
         else:
             raise HTTPException(status_code=404, detail="No matches found with sufficient confidence")
+    except ValueError as ve:
+        logger.warning(f"AcoustID identification validation error for {filename}: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Manual identification failed for {filename}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+class ApplyMetadataRequest(BaseModel):
+    artist: str
+    title: str
+    album: Optional[str] = None
+    release_mbid: Optional[str] = None
+
+@app.get("/api/recordings/{filename}/identify-candidates")
+def identify_recording_candidates(filename: str):
+    """Scan the recording and return AcoustID candidate matches grouped by confidence."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
+        
+    filepath = out_dir / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    from backend.acoustid import get_fingerprint, lookup_acoustid_candidates
+    try:
+        duration, fingerprint = get_fingerprint(str(filepath))
+        candidates = lookup_acoustid_candidates(duration, fingerprint, config.acoustid_api_key)
+        
+        threshold = config.acoustid_confidence_threshold
+        high_confidence = [c for c in candidates if c["score"] >= threshold]
+        low_confidence = [c for c in candidates if c["score"] < threshold]
+        
+        return {
+            "status": "success",
+            "high_confidence": high_confidence,
+            "low_confidence": low_confidence
+        }
+    except ValueError as ve:
+        logger.warning(f"AcoustID candidate lookup error for {filename}: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"AcoustID candidate lookup failed for {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recordings/{filename}/apply-metadata")
+def apply_recording_metadata(filename: str, req: ApplyMetadataRequest):
+    """Manually apply chosen metadata to a recording file."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
+        
+    filepath = out_dir / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    from backend.acoustid import apply_metadata_to_file
+    try:
+        new_path = apply_metadata_to_file(
+            filepath=str(filepath),
+            artist=req.artist,
+            title=req.title,
+            album=req.album,
+            release_mbid=req.release_mbid
+        )
+        return {
+            "status": "success",
+            "message": "Metadata applied successfully",
+            "new_filename": Path(new_path).name
+        }
+    except Exception as e:
+        logger.error(f"Failed to apply metadata for {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recordings/{filename}/undo-identify")
+def undo_recording_identification(filename: str):
+    """Reverts a previously identified and renamed file to its original filename."""
+    config = load_config()
+    out_dir = Path(config.output_dir)
+    if not out_dir.is_absolute():
+        out_dir = Path(os.getcwd()) / out_dir
+        
+    filepath = out_dir / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    from backend.acoustid import undo_identify_file
+    try:
+        orig_path = undo_identify_file(str(filepath))
+        return {
+            "status": "success",
+            "message": "Identification reverted successfully",
+            "original_filename": Path(orig_path).name
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except FileExistsError as fee:
+        raise HTTPException(status_code=409, detail=str(fee))
+    except Exception as e:
+        logger.error(f"Failed to undo identification for {filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/recordings/{filename}/coverart")
 def get_coverart(filename: str):
